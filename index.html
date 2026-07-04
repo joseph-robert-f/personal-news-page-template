@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:,">
+<title>Personal News Digest</title>
+<style>
+  :root {
+    --ink: #17181c;
+    --muted: #6b7280;
+    --faint: #9aa1a9;
+    --line: #ececef;
+    --bg: #ffffff;
+    --panel: #fafafa;
+    --accent: #2563eb;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    display: flex; flex-direction: column;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink); background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+  }
+  header.bar {
+    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+    padding: 0.7rem 1.25rem; background: var(--bg);
+    border-bottom: 1px solid var(--line); z-index: 2;
+  }
+  .brand { display: flex; flex-direction: column; line-height: 1.1; text-decoration: none; }
+  .brand .eyebrow {
+    font-size: 0.62rem; font-weight: 600; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--accent);
+  }
+  .brand .name { font-size: 1.02rem; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  .latest { color: var(--muted); font-size: 0.88rem; }
+  .latest strong { color: var(--ink); font-weight: 600; }
+  nav { margin-left: auto; display: flex; align-items: center; gap: 0.4rem; }
+  nav a {
+    color: var(--muted); text-decoration: none; font-size: 0.86rem; font-weight: 500;
+    padding: 0.35rem 0.7rem; border-radius: 7px;
+  }
+  nav a:hover { color: var(--ink); background: #f4f5f7; }
+  nav a.primary { color: var(--accent); }
+  nav a[hidden] { display: none; }
+  .frame-wrap { flex: 1; position: relative; min-height: 0; }
+  iframe { border: 0; width: 100%; height: 100%; position: absolute; inset: 0; background: var(--bg); }
+  iframe[hidden] { display: none; }
+  .status {
+    padding: 2.5rem; text-align: center; color: var(--muted); font-size: 0.92rem;
+    max-width: 38rem; margin: 0 auto;
+  }
+  .status strong { display: block; color: var(--ink); font-size: 1.25rem; margin-bottom: 0.45rem; }
+  .status.error { color: #b42318; }
+  .status.error strong { color: #b42318; }
+</style>
+</head>
+<body>
+<header class="bar">
+  <a class="brand" href="./" aria-label="Home">
+    <span class="eyebrow" id="brand-eyebrow">Daily Brief</span>
+    <span class="name" id="brand-name">Personal News Digest</span>
+  </a>
+  <span class="latest" id="latest"></span>
+  <nav>
+    <a href="./archive.html">Archive</a>
+    <a class="primary" id="open-new" href="#" target="_blank" rel="noopener">Open full &nearr;</a>
+  </nav>
+</header>
+<div class="frame-wrap">
+  <iframe id="frame" title="Digest" hidden></iframe>
+  <div class="status" id="status">Loading latest digest&hellip;</div>
+</div>
+<script>
+(async function () {
+  const DEFAULT_CONFIG = {
+    siteTitle: 'Personal News Digest',
+    description: 'A personal daily news page for the topics you care about.',
+    eyebrow: 'Daily Brief',
+    digestTitlePrefix: 'Personal News Digest',
+    topic: 'news you care about',
+    audience: 'a personal daily reader',
+    coverageWindow: 'last 24 hours',
+    timezone: 'America/New_York',
+    publishTimeLocal: '06:30',
+    accentColor: '#2563eb',
+    draftBranchPrefix: 'daily-digest'
+  };
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const statusEl = document.getElementById('status');
+  const frame = document.getElementById('frame');
+  const latestEl = document.getElementById('latest');
+  const openNew = document.getElementById('open-new');
+
+  const formatDate = (iso) => {
+    const parts = iso.split('-').map(Number);
+    return parts[2] + ' ' + MONTHS[parts[1] - 1] + ' ' + parts[0];
+  };
+  const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const encodePath = (p) => p.split('/').map(encodeURIComponent).join('/');
+
+  async function loadConfig() {
+    try {
+      const res = await fetch('./site.config.json', { cache: 'no-cache' });
+      if (!res.ok) return DEFAULT_CONFIG;
+      const config = await res.json();
+      return Object.assign({}, DEFAULT_CONFIG, config || {});
+    } catch {
+      return DEFAULT_CONFIG;
+    }
+  }
+
+  function applyConfig(config) {
+    document.documentElement.style.setProperty('--accent', config.accentColor);
+    document.title = config.siteTitle;
+    document.getElementById('brand-eyebrow').textContent = config.eyebrow;
+    document.getElementById('brand-name').textContent = config.siteTitle;
+    frame.title = config.siteTitle;
+  }
+
+  try {
+    const config = await loadConfig();
+    applyConfig(config);
+
+    const res = await fetch('./digests.json', { cache: 'no-cache' });
+    if (!res.ok) throw new Error('Could not load digests.json (HTTP ' + res.status + ')');
+    const data = await res.json();
+    const list = (data.digests || []).slice().sort((a, b) => (a.date < b.date ? 1 : -1));
+
+    if (!list.length) {
+      latestEl.textContent = 'No published digests yet';
+      openNew.hidden = true;
+      frame.hidden = true;
+      statusEl.innerHTML = '<strong>No digests yet.</strong><span>Create and merge your first daily draft; it will appear here automatically.</span>';
+      return;
+    }
+
+    const params = new URLSearchParams(location.search);
+    const wantPath = params.get('path');
+    const wantDate = params.get('date');
+    let entry = list[0];
+    if (wantPath) entry = list.find((d) => d.path === wantPath) || entry;
+    else if (wantDate) entry = list.find((d) => d.date === wantDate) || entry;
+
+    const url = encodePath(entry.path);
+    frame.src = url;
+    frame.hidden = false;
+    openNew.href = url;
+    openNew.hidden = false;
+    const isLatest = entry === list[0];
+    latestEl.innerHTML = (isLatest ? 'Latest &middot; ' : 'Showing &middot; ') +
+      '<strong>' + escapeHtml(formatDate(entry.date)) + '</strong>';
+    document.title = config.siteTitle + ' - ' + formatDate(entry.date);
+    frame.addEventListener('load', () => { statusEl.style.display = 'none'; });
+  } catch (err) {
+    frame.hidden = true;
+    openNew.hidden = true;
+    statusEl.className = 'status error';
+    statusEl.innerHTML = '<strong>Could not load the digest.</strong><span>' +
+      escapeHtml((err && err.message) ? err.message : String(err)) + '</span>';
+  }
+})();
+</script>
+</body>
+</html>
