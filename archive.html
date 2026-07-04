@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:,">
+<title>Personal News Digest - Archive</title>
+<style>
+  :root {
+    --ink: #17181c;
+    --muted: #6b7280;
+    --faint: #9aa1a9;
+    --line: #ececef;
+    --bg: #ffffff;
+    --panel: #fafafa;
+    --accent: #2563eb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    max-width: 720px; margin: 0 auto; padding: 3rem 1.5rem 4rem;
+    color: var(--ink); background: var(--bg); line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .masthead { margin-bottom: 2rem; }
+  .eyebrow {
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: 0.4rem;
+  }
+  .masthead h1 { font-size: 1.9rem; font-weight: 700; letter-spacing: -0.02em; margin: 0; }
+  .masthead a.home { color: var(--accent); text-decoration: none; font-size: 0.88rem; font-weight: 500; }
+  .masthead a.home:hover { text-decoration: underline; }
+  h2 {
+    font-size: 0.74rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--muted); margin: 2.25rem 0 0.5rem; padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--line);
+  }
+  ul.digests { list-style: none; padding: 0; margin: 0; }
+  .entry { padding: 1.05rem 0; border-bottom: 1px solid var(--line); }
+  a.title {
+    font-weight: 700; color: var(--ink); text-decoration: none; font-size: 1.05rem;
+    letter-spacing: -0.01em;
+  }
+  a.title:hover { color: var(--accent); }
+  .date { color: var(--faint); font-size: 0.82rem; margin-top: 0.15rem; }
+  .summary { color: #3b3f47; font-size: 0.92rem; margin-top: 0.4rem; }
+  .actions { margin-top: 0.45rem; font-size: 0.8rem; }
+  .actions a { color: var(--muted); text-decoration: none; }
+  .actions a:hover { color: var(--accent); }
+  .status { color: var(--muted); padding: 2rem 0; }
+  .status strong { display: block; color: var(--ink); font-size: 1.1rem; margin-bottom: 0.35rem; }
+  .status.error { color: #b42318; }
+  .status.error strong { color: #b42318; }
+  .badge {
+    display: inline-block; font-size: 0.62rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; color: #fff; background: var(--accent);
+    padding: 0.08rem 0.45rem; border-radius: 999px; margin-left: 0.5rem; vertical-align: 0.12em;
+  }
+</style>
+</head>
+<body>
+<header class="masthead">
+  <div class="eyebrow" id="brand-eyebrow">Daily Brief</div>
+  <h1>Archive</h1>
+  <p style="margin:0.5rem 0 0;"><a class="home" href="./">&larr; Latest digest</a></p>
+</header>
+<div id="content"><div class="status">Loading&hellip;</div></div>
+<script>
+(async function () {
+  const DEFAULT_CONFIG = {
+    siteTitle: 'Personal News Digest',
+    description: 'A personal daily news page for the topics you care about.',
+    eyebrow: 'Daily Brief',
+    digestTitlePrefix: 'Personal News Digest',
+    topic: 'news you care about',
+    audience: 'a personal daily reader',
+    coverageWindow: 'last 24 hours',
+    timezone: 'America/New_York',
+    publishTimeLocal: '06:30',
+    accentColor: '#2563eb',
+    draftBranchPrefix: 'daily-digest'
+  };
+  const content = document.getElementById('content');
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  const formatDate = (iso) => {
+    const parts = iso.split('-').map(Number);
+    return parts[2] + ' ' + MONTHS[parts[1] - 1] + ' ' + parts[0];
+  };
+  const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const encodePath = (p) => p.split('/').map(encodeURIComponent).join('/');
+  const escapeRegExp = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  async function loadConfig() {
+    try {
+      const res = await fetch('./site.config.json', { cache: 'no-cache' });
+      if (!res.ok) return DEFAULT_CONFIG;
+      const config = await res.json();
+      return Object.assign({}, DEFAULT_CONFIG, config || {});
+    } catch {
+      return DEFAULT_CONFIG;
+    }
+  }
+
+  function stripTitlePrefix(title, prefix) {
+    return String(title).replace(new RegExp('^' + escapeRegExp(prefix) + '\\s*[\\u2014\\u2013-]\\s*'), '');
+  }
+
+  try {
+    const config = await loadConfig();
+    document.documentElement.style.setProperty('--accent', config.accentColor);
+    document.title = config.siteTitle + ' - Archive';
+    document.getElementById('brand-eyebrow').textContent = config.eyebrow;
+
+    const res = await fetch('./digests.json', { cache: 'no-cache' });
+    if (!res.ok) throw new Error('Could not load digests.json (HTTP ' + res.status + ')');
+    const data = await res.json();
+    const list = (data.digests || []).slice().sort((a, b) => (a.date < b.date ? 1 : -1));
+    if (!list.length) {
+      content.innerHTML = '<div class="status"><strong>No digests yet.</strong><span>Published daily digests will collect here.</span></div>';
+      return;
+    }
+
+    const groups = [];
+    const index = new Map();
+    for (const d of list) {
+      const year = d.date.slice(0, 4);
+      const monthName = MONTHS[Number(d.date.slice(5, 7)) - 1];
+      const key = year + '-' + monthName;
+      if (!index.has(key)) {
+        const group = { label: monthName + ' ' + year, items: [] };
+        index.set(key, group);
+        groups.push(group);
+      }
+      index.get(key).items.push(d);
+    }
+
+    const html = groups.map((group) => {
+      const items = group.items.map((d) => {
+        const isNewest = d === list[0];
+        return '<li class="entry">' +
+          '<a class="title" href="./?date=' + encodeURIComponent(d.date) + '">' +
+            escapeHtml(stripTitlePrefix(d.title, config.digestTitlePrefix)) +
+            (isNewest ? '<span class="badge">Latest</span>' : '') +
+          '</a>' +
+          '<div class="date">' + escapeHtml(formatDate(d.date)) + '</div>' +
+          (d.summary ? '<div class="summary">' + escapeHtml(d.summary) + '</div>' : '') +
+          '<div class="actions"><a href="' + encodePath(d.path) + '" target="_blank" rel="noopener">Open standalone &nearr;</a></div>' +
+        '</li>';
+      }).join('');
+      return '<h2>' + escapeHtml(group.label) + '</h2><ul class="digests">' + items + '</ul>';
+    }).join('');
+
+    content.innerHTML = html;
+  } catch (err) {
+    content.innerHTML = '<div class="status error"><strong>Could not load archive.</strong><span>' +
+      escapeHtml((err && err.message) ? err.message : String(err)) + '</span></div>';
+  }
+})();
+</script>
+</body>
+</html>
