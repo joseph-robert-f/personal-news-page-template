@@ -28,7 +28,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
       - name: Validate site config
         run: node scripts/validate-config.mjs
       - name: Resolve draft date and branch
