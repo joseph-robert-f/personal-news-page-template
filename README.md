@@ -15,7 +15,7 @@ scripts that run on GitHub's hosted runners.
 | `index.html` | Homepage that frames the newest published digest. Supports `?date=YYYY-MM-DD`. |
 | `archive.html` | Archive grouped by month, newest first. |
 | `templates/digest-template.html` | Starter HTML used by the draft generator. |
-| `scripts/new-digest.mjs` | Creates a dated draft from the template. |
+| `scripts/new-digest.mjs` | Creates a dated draft digest from the template. |
 | `scripts/build-manifest.mjs` | Scans dated digest files and writes `digests.json`. |
 | `.github/workflows/daily-draft.yml` | Scheduled Action that opens draft PRs for review. |
 | `.github/workflows/build.yml` | Deploys the published site to GitHub Pages on pushes to `main`. |
