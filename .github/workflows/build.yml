@@ -21,12 +21,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
       - name: Validate site config
         run: node scripts/validate-config.mjs
       - name: Generate digests.json
         run: node scripts/build-manifest.mjs
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: .
