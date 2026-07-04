@@ -1,0 +1,97 @@
+name: Create daily draft
+
+on:
+  schedule:
+    # Default: 06:30 Eastern during standard time. Adjust this cron if you
+    # change site.config.json to another timezone or local publish time.
+    - cron: "30 11 * * *"
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "Optional digest date in YYYY-MM-DD format"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  draft:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REQUESTED_DATE: ${{ inputs.date }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Validate site config
+        run: node scripts/validate-config.mjs
+      - name: Resolve draft date and branch
+        run: |
+          if [ -n "$REQUESTED_DATE" ]; then
+            DIGEST_DATE="$REQUESTED_DATE"
+          else
+            DIGEST_DATE="$(node scripts/new-digest.mjs --print-date)"
+          fi
+          DRAFT_BRANCH="$(node scripts/new-digest.mjs --date "$DIGEST_DATE" --print-branch)"
+          DRAFT_PATH="$(node scripts/new-digest.mjs --date "$DIGEST_DATE" --print-path)"
+          echo "DIGEST_DATE=$DIGEST_DATE" >> "$GITHUB_ENV"
+          echo "DRAFT_BRANCH=$DRAFT_BRANCH" >> "$GITHUB_ENV"
+          echo "DRAFT_PATH=$DRAFT_PATH" >> "$GITHUB_ENV"
+      - name: Check out draft branch
+        run: |
+          git fetch origin "$DRAFT_BRANCH" || true
+          if git show-ref --verify --quiet "refs/remotes/origin/$DRAFT_BRANCH"; then
+            echo "DRAFT_REMOTE_EXISTS=true" >> "$GITHUB_ENV"
+            git checkout -B "$DRAFT_BRANCH" "origin/$DRAFT_BRANCH"
+          else
+            echo "DRAFT_REMOTE_EXISTS=false" >> "$GITHUB_ENV"
+            git checkout -b "$DRAFT_BRANCH"
+          fi
+      - name: Create draft digest
+        run: |
+          node scripts/new-digest.mjs --date "$DIGEST_DATE"
+          node scripts/build-manifest.mjs
+      - name: Commit draft if needed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$DRAFT_PATH" digests.json
+          if git diff --cached --quiet; then
+            echo "No draft changes to commit."
+            echo "DRAFT_HAS_CHANGES=false" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          git commit -m "Add draft news digest for $DIGEST_DATE"
+          git push --set-upstream origin "$DRAFT_BRANCH"
+          echo "DRAFT_HAS_CHANGES=true" >> "$GITHUB_ENV"
+      - name: Open draft pull request
+        run: |
+          if [ "$DRAFT_HAS_CHANGES" != "true" ] && [ "$DRAFT_REMOTE_EXISTS" != "true" ]; then
+            echo "No branch changes and no remote draft branch; skipping PR creation."
+            exit 0
+          fi
+          if gh pr view "$DRAFT_BRANCH" --json number --jq .number >/dev/null 2>&1; then
+            echo "Draft pull request already exists for $DRAFT_BRANCH."
+            exit 0
+          fi
+          cat > pr-body.md <<'EOF'
+          Review this daily draft before merging.
+
+          Checklist:
+          - [ ] Replace placeholder bullets and story text.
+          - [ ] Add source links for every substantive claim.
+          - [ ] Keep the skim surface tight.
+          - [ ] Confirm the title date and meta description.
+
+          Merging this PR publishes the digest through the Pages workflow.
+          EOF
+          gh pr create \
+            --draft \
+            --title "Draft news digest for $DIGEST_DATE" \
+            --body-file pr-body.md
