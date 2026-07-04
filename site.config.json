@@ -1,0 +1,13 @@
+{
+  "siteTitle": "Personal News Digest",
+  "description": "A personal daily news page for the topics you care about.",
+  "eyebrow": "Daily Brief",
+  "digestTitlePrefix": "Personal News Digest",
+  "topic": "news you care about",
+  "audience": "a personal daily reader",
+  "coverageWindow": "last 24 hours",
+  "timezone": "America/New_York",
+  "publishTimeLocal": "06:30",
+  "accentColor": "#2563eb",
+  "draftBranchPrefix": "daily-digest"
+}
