@@ -35,6 +35,9 @@ scripts that run on GitHub's hosted runners.
 4. Enable GitHub Actions if your fork asks for approval.
 5. Run the "Create daily draft" workflow manually once, or wait for the schedule.
 
+The deploy workflow validates the site on every push. If Pages is not enabled
+yet, it exits successfully with a notice and skips deployment.
+
 ## Daily Routine
 
 The scheduled workflow does not publish automatically. It creates a branch like
