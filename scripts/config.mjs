@@ -6,6 +6,10 @@ export const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
+// NOTE: DEFAULT_CONFIG is mirrored in assets/site.js for the browser pages
+// (index.html / archive.html), which can't import this Node module directly.
+// test/site-js.test.mjs asserts the two copies stay equal. If you change one,
+// change the other.
 export const DEFAULT_CONFIG = Object.freeze({
   siteTitle: 'Personal News Digest',
   description: 'A personal daily news page for the topics you care about.',

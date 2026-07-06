@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
   <link rel="icon" href="data:,">
   <!-- The site reads the date from this title. Keep the generated "D Month YYYY" date. -->
   <title>{{DIGEST_TITLE_PREFIX}} &mdash; {{DATE_DISPLAY}}</title>
@@ -18,6 +19,22 @@
       --panel: #fafafa;
       --accent: {{ACCENT_COLOR}};
       --maxw: 720px;
+      --lead: #2c2f36;
+      --detail: #33363d;
+    }
+    /* Kept inline (not shared via assets/site.js) so each digest stays a
+       self-contained file per the Content Bar rule. */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --ink: #e7e9ec;
+        --muted: #9aa3ad;
+        --faint: #7d8592;
+        --line: #2b2e34;
+        --bg: #101114;
+        --panel: #1a1c20;
+        --lead: #d7d9dd;
+        --detail: #c4c8cf;
+      }
     }
     * { box-sizing: border-box; }
     html { -webkit-text-size-adjust: 100%; }
@@ -88,7 +105,7 @@
       font-size: 1.18rem; font-weight: 700; letter-spacing: -0.01em;
       margin: 0 0 0.5rem; line-height: 1.3;
     }
-    .lead { margin: 0; font-size: 1rem; color: #2c2f36; }
+    .lead { margin: 0; font-size: 1rem; color: var(--lead); }
     .lead .wm { font-weight: 700; color: var(--ink); }
 
     details { margin-top: 0.75rem; }
@@ -100,7 +117,8 @@
     summary::-webkit-details-marker { display: none; }
     summary::after { content: ">"; transition: transform 0.15s ease; font-size: 1rem; }
     details[open] summary::after { transform: rotate(90deg); }
-    .detail { padding-top: 0.6rem; color: #33363d; font-size: 0.95rem; }
+    summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+    .detail { padding-top: 0.6rem; color: var(--detail); font-size: 0.95rem; }
     .detail p { margin: 0 0 0.75rem; }
     ul.sources { margin: 0.5rem 0 0; padding-left: 1.1rem; font-size: 0.85rem; color: var(--muted); }
     ul.sources li { margin-bottom: 0.2rem; }

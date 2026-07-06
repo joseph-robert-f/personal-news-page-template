@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
 <link rel="icon" href="data:,">
 <title>Personal News Digest - Archive</title>
 <style>
@@ -14,6 +15,20 @@
     --bg: #ffffff;
     --panel: #fafafa;
     --accent: #2563eb;
+    --error: #b42318;
+    --summary: #3b3f47;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #e7e9ec;
+      --muted: #9aa3ad;
+      --faint: #7d8592;
+      --line: #2b2e34;
+      --bg: #101114;
+      --panel: #1a1c20;
+      --error: #ff6b6b;
+      --summary: #c4c8cf;
+    }
   }
   * { box-sizing: border-box; }
   body {
@@ -42,15 +57,18 @@
     letter-spacing: -0.01em;
   }
   a.title:hover { color: var(--accent); }
+  a.title:focus-visible, .masthead a.home:focus-visible, .actions a:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px;
+  }
   .date { color: var(--faint); font-size: 0.82rem; margin-top: 0.15rem; }
-  .summary { color: #3b3f47; font-size: 0.92rem; margin-top: 0.4rem; }
+  .summary { color: var(--summary); font-size: 0.92rem; margin-top: 0.4rem; }
   .actions { margin-top: 0.45rem; font-size: 0.8rem; }
   .actions a { color: var(--muted); text-decoration: none; }
   .actions a:hover { color: var(--accent); }
   .status { color: var(--muted); padding: 2rem 0; }
   .status strong { display: block; color: var(--ink); font-size: 1.1rem; margin-bottom: 0.35rem; }
-  .status.error { color: #b42318; }
-  .status.error strong { color: #b42318; }
+  .status.error { color: var(--error); }
+  .status.error strong { color: var(--error); }
   .badge {
     display: inline-block; font-size: 0.62rem; font-weight: 700; text-transform: uppercase;
     letter-spacing: 0.06em; color: #fff; background: var(--accent);
@@ -64,51 +82,21 @@
   <h1>Archive</h1>
   <p style="margin:0.5rem 0 0;"><a class="home" href="./">&larr; Latest digest</a></p>
 </header>
-<div id="content"><div class="status">Loading&hellip;</div></div>
+<div id="content" role="status" aria-live="polite"><div class="status">Loading&hellip;</div></div>
+<script src="./assets/site.js"></script>
 <script>
 (async function () {
-  const DEFAULT_CONFIG = {
-    siteTitle: 'Personal News Digest',
-    description: 'A personal daily news page for the topics you care about.',
-    eyebrow: 'Daily Brief',
-    digestTitlePrefix: 'Personal News Digest',
-    topic: 'news you care about',
-    audience: 'a personal daily reader',
-    coverageWindow: 'last 24 hours',
-    timezone: 'America/New_York',
-    publishTimeLocal: '06:30',
-    accentColor: '#2563eb',
-    draftBranchPrefix: 'daily-digest'
-  };
+  const { MONTHS, formatDate, escapeHtml, encodePath, loadSiteConfig } = window.SiteCommon;
   const content = document.getElementById('content');
-  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-  const formatDate = (iso) => {
-    const parts = iso.split('-').map(Number);
-    return parts[2] + ' ' + MONTHS[parts[1] - 1] + ' ' + parts[0];
-  };
-  const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const encodePath = (p) => p.split('/').map(encodeURIComponent).join('/');
   const escapeRegExp = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-  async function loadConfig() {
-    try {
-      const res = await fetch('./site.config.json', { cache: 'no-cache' });
-      if (!res.ok) return DEFAULT_CONFIG;
-      const config = await res.json();
-      return Object.assign({}, DEFAULT_CONFIG, config || {});
-    } catch {
-      return DEFAULT_CONFIG;
-    }
-  }
 
   function stripTitlePrefix(title, prefix) {
     return String(title).replace(new RegExp('^' + escapeRegExp(prefix) + '\\s*[\\u2014\\u2013-]\\s*'), '');
   }
 
   try {
-    const config = await loadConfig();
+    const config = await loadSiteConfig();
     document.documentElement.style.setProperty('--accent', config.accentColor);
     document.title = config.siteTitle + ' - Archive';
     document.getElementById('brand-eyebrow').textContent = config.eyebrow;
@@ -152,6 +140,11 @@
       return '<h2>' + escapeHtml(group.label) + '</h2><ul class="digests">' + items + '</ul>';
     }).join('');
 
+    // The list itself is primary content, not a status message; once it is
+    // populated, stop treating the container as a live region so screen
+    // readers don't re-announce the whole archive on every reload.
+    content.removeAttribute('role');
+    content.removeAttribute('aria-live');
     content.innerHTML = html;
   } catch (err) {
     content.innerHTML = '<div class="status error"><strong>Could not load archive.</strong><span>' +

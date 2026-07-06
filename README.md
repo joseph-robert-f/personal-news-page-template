@@ -29,7 +29,11 @@ scripts that run on GitHub's hosted runners.
    - `topic`: what the daily brief tracks
    - `audience`: who the brief is written for
    - `timezone` and `publishTimeLocal`: when your routine should run
-   - `accentColor`: CSS color used for links and badges
+   - `accentColor`: CSS color used for links and badges. The site supports
+     light and dark mode (via `prefers-color-scheme`); if you pick a custom
+     accent color, check it against both the light background and the dark
+     background (see the `@media (prefers-color-scheme: dark)` block in
+     `index.html`) for readable contrast before publishing.
 3. Enable GitHub Pages:
    - Settings -> Pages -> Build and deployment -> Source: GitHub Actions
 4. Enable GitHub Actions if your fork asks for approval.

@@ -31,7 +31,8 @@ jobs:
       - name: Stage site files for publishing
         run: |
           mkdir -p _site
-          cp index.html archive.html digests.json site.config.json _site/
+          cp index.html archive.html 404.html digests.json site.config.json _site/
+          cp -r assets _site/
           touch _site/.nojekyll
           # Copy any top-level YYYY/ directories
           for dir in [0-9][0-9][0-9][0-9]/; do
