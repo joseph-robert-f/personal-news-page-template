@@ -21,7 +21,8 @@
     timezone: 'America/New_York',
     publishTimeLocal: '06:30',
     accentColor: '#2563eb',
-    draftBranchPrefix: 'daily-digest'
+    draftBranchPrefix: 'daily-digest',
+    siteUrl: ''
   };
 
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',

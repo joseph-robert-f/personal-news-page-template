@@ -5,7 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="color-scheme" content="light dark">
 <link rel="icon" href="data:,">
+<link rel="alternate" type="application/atom+xml" title="Atom feed" href="./feed.xml">
 <title>Personal News Digest</title>
+<!-- Static Open Graph fallback for crawlers: og:title/og:description loaded
+     from site.config.json at runtime aren't visible to non-JS crawlers. Fork
+     owners should edit these two tags to match their config. -->
+<meta property="og:title" content="Personal News Digest">
+<meta property="og:description" content="A personal daily news page for the topics you care about.">
 <style>
   :root {
     --ink: #17181c;

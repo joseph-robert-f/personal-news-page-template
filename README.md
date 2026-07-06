@@ -17,6 +17,7 @@ scripts that run on GitHub's hosted runners.
 | `templates/digest-template.html` | Starter HTML used by the draft generator. |
 | `scripts/new-digest.mjs` | Creates a dated draft digest from the template. |
 | `scripts/build-manifest.mjs` | Scans dated digest files and writes `digests.json`. |
+| `scripts/build-feed.mjs` | Generates `feed.xml` (Atom) and `sitemap.xml` from `digests.json`; skipped until `siteUrl` is set. |
 | `.github/workflows/daily-draft.yml` | Scheduled Action that opens draft PRs for review. |
 | `.github/workflows/build.yml` | Deploys the published site to GitHub Pages on pushes to `main`. |
 
@@ -34,6 +35,10 @@ scripts that run on GitHub's hosted runners.
      accent color, check it against both the light background and the dark
      background (see the `@media (prefers-color-scheme: dark)` block in
      `index.html`) for readable contrast before publishing.
+   - `siteUrl` (optional): your GitHub Pages URL, e.g.
+     `https://user.github.io/repo` (no trailing slash needed). Set this to
+     enable the generated Atom feed (`feed.xml`) and sitemap
+     (`sitemap.xml`); while it is empty, the build skips both with a notice.
 3. Enable GitHub Pages:
    - Settings -> Pages -> Build and deployment -> Source: GitHub Actions
 4. Enable GitHub Actions if your fork asks for approval.
@@ -84,6 +89,14 @@ Rebuild the manifest:
 
 ```bash
 node scripts/build-manifest.mjs
+```
+
+Generate the Atom feed and sitemap (requires `siteUrl` to be set in
+`site.config.json`; otherwise it prints a notice and exits without writing
+anything):
+
+```bash
+node scripts/build-feed.mjs
 ```
 
 Run the unit tests:

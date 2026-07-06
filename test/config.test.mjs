@@ -2,7 +2,10 @@
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { DEFAULT_CONFIG, formatIsoDate, parseIsoParts, validateSiteConfig } from '../scripts/config.mjs';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { DEFAULT_CONFIG, formatIsoDate, loadSiteConfig, parseIsoParts, validateSiteConfig } from '../scripts/config.mjs';
 
 const REQUIRED_STRINGS = [
   'siteTitle',
@@ -62,6 +65,29 @@ test('validateSiteConfig accepts valid accentColor forms', () => {
   }
 });
 
+test('validateSiteConfig accepts an empty siteUrl', () => {
+  assert.deepEqual(validateSiteConfig({ ...DEFAULT_CONFIG, siteUrl: '' }), []);
+});
+
+test('validateSiteConfig accepts a valid absolute https:// siteUrl', () => {
+  assert.deepEqual(validateSiteConfig({ ...DEFAULT_CONFIG, siteUrl: 'https://user.github.io/repo' }), []);
+});
+
+test('validateSiteConfig rejects a non-https siteUrl', () => {
+  const errors = validateSiteConfig({ ...DEFAULT_CONFIG, siteUrl: 'http://user.github.io/repo' });
+  assert.ok(errors.some((e) => e.includes('siteUrl must use the https:// protocol')));
+});
+
+test('validateSiteConfig rejects an unparsable siteUrl', () => {
+  const errors = validateSiteConfig({ ...DEFAULT_CONFIG, siteUrl: 'not a url' });
+  assert.ok(errors.some((e) => e.includes('siteUrl must be a valid absolute URL')));
+});
+
+test('validateSiteConfig rejects a non-string siteUrl', () => {
+  const errors = validateSiteConfig({ ...DEFAULT_CONFIG, siteUrl: 42 });
+  assert.ok(errors.some((e) => e.includes('siteUrl must be a string')));
+});
+
 test('parseIsoParts rejects invalid calendar dates and unparsable strings', () => {
   assert.throws(() => parseIsoParts('2026-02-30'));
   assert.throws(() => parseIsoParts('2026-13-01'));
@@ -74,4 +100,26 @@ test('parseIsoParts accepts a leap day', () => {
 
 test('formatIsoDate formats a YYYY-MM-DD date as "D Month YYYY"', () => {
   assert.equal(formatIsoDate('2026-07-06'), '6 July 2026');
+});
+
+test('loadSiteConfig strips a single trailing slash from siteUrl', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'site-config-test-'));
+  try {
+    await writeFile(join(dir, 'site.config.json'), JSON.stringify({ siteUrl: 'https://user.github.io/repo/' }));
+    const config = await loadSiteConfig(dir);
+    assert.equal(config.siteUrl, 'https://user.github.io/repo');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('loadSiteConfig leaves a siteUrl with no trailing slash untouched', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'site-config-test-'));
+  try {
+    await writeFile(join(dir, 'site.config.json'), JSON.stringify({ siteUrl: 'https://user.github.io/repo' }));
+    const config = await loadSiteConfig(dir);
+    assert.equal(config.siteUrl, 'https://user.github.io/repo');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });

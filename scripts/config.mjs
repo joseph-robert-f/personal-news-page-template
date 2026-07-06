@@ -22,6 +22,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   publishTimeLocal: '06:30',
   accentColor: '#2563eb',
   draftBranchPrefix: 'daily-digest',
+  siteUrl: '',
 });
 
 export async function loadSiteConfig(root) {
@@ -38,6 +39,11 @@ export async function loadSiteConfig(root) {
   const errors = validateSiteConfig(config);
   if (errors.length) {
     throw new Error(`Invalid site.config.json:\n- ${errors.join('\n- ')}`);
+  }
+  // Normalize: strip a single trailing slash so callers can always build
+  // URLs as `${siteUrl}/path` without worrying about a doubled slash.
+  if (typeof config.siteUrl === 'string') {
+    config.siteUrl = config.siteUrl.replace(/\/$/, '');
   }
   return config;
 }
@@ -84,6 +90,20 @@ export function validateSiteConfig(config) {
     !/^[A-Za-z0-9._/-]+$/.test(config.draftBranchPrefix)
   ) {
     errors.push('draftBranchPrefix may only contain letters, numbers, dots, slashes, underscores, and hyphens');
+  }
+
+  if (typeof config.siteUrl !== 'string') {
+    errors.push('siteUrl must be a string');
+  } else if (config.siteUrl.trim()) {
+    let parsed;
+    try {
+      parsed = new URL(config.siteUrl.trim());
+    } catch {
+      errors.push('siteUrl must be a valid absolute URL, such as https://user.github.io/repo');
+    }
+    if (parsed && parsed.protocol !== 'https:') {
+      errors.push('siteUrl must use the https:// protocol');
+    }
   }
 
   if (typeof config.accentColor === 'string' && config.accentColor.trim()) {
