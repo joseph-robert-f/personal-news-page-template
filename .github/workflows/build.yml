@@ -28,6 +28,17 @@ jobs:
         run: node scripts/validate-config.mjs
       - name: Generate digests.json
         run: node scripts/build-manifest.mjs
+      - name: Stage site files for publishing
+        run: |
+          mkdir -p _site
+          cp index.html archive.html digests.json site.config.json _site/
+          touch _site/.nojekyll
+          # Copy any top-level YYYY/ directories
+          for dir in [0-9][0-9][0-9][0-9]/; do
+            if [ -d "$dir" ]; then
+              cp -r "$dir" _site/
+            fi
+          done
       - name: Check GitHub Pages setup
         id: pages
         env:
@@ -54,7 +65,7 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         if: steps.pages.outputs.enabled == 'true'
         with:
-          path: .
+          path: _site
 
   deploy:
     needs: build

@@ -38,6 +38,11 @@ jobs:
           else
             DIGEST_DATE="$(node scripts/new-digest.mjs --print-date)"
           fi
+          # Validate DIGEST_DATE matches YYYY-MM-DD format
+          if ! [[ "$DIGEST_DATE" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+            echo "::error::Invalid digest date format: '$DIGEST_DATE'. Expected YYYY-MM-DD."
+            exit 1
+          fi
           DRAFT_BRANCH="$(node scripts/new-digest.mjs --date "$DIGEST_DATE" --print-branch)"
           DRAFT_PATH="$(node scripts/new-digest.mjs --date "$DIGEST_DATE" --print-path)"
           echo "DIGEST_DATE=$DIGEST_DATE" >> "$GITHUB_ENV"

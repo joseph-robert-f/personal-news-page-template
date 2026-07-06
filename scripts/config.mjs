@@ -82,6 +82,19 @@ export function validateSiteConfig(config) {
     errors.push('draftBranchPrefix may only contain letters, numbers, dots, slashes, underscores, and hyphens');
   }
 
+  if (typeof config.accentColor === 'string' && config.accentColor.trim()) {
+    const accentColor = config.accentColor.trim();
+    // Reject dangerous characters: ; { } <
+    if (/[;{}]|</.test(accentColor)) {
+      errors.push('accentColor must not contain semicolons, braces, or angle brackets');
+    }
+    // Allow hex colors (#rgb, #rrggbb, #rrggbbaa) or CSS keywords/functions
+    // (letters, digits, parentheses, commas, dots, percent signs, spaces, hyphens)
+    else if (!/^(#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?([0-9a-fA-F]{2})?|[a-zA-Z0-9()\s,.%-]+)$/.test(accentColor)) {
+      errors.push('accentColor must be a hex color (#rgb, #rrggbb, #rrggbbaa) or a valid CSS color keyword/function');
+    }
+  }
+
   return errors;
 }
 

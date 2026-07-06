@@ -36,6 +36,22 @@ async function findHtml(dir, rel) {
 
 function decodeEntities(s) {
   return s
+    // Numeric entities: decimal (&#8212;) and hex (&#x2014;, &#X2014;)
+    .replace(/&#(\d+);/g, (match, num) => {
+      try {
+        return String.fromCodePoint(parseInt(num, 10));
+      } catch {
+        return match;
+      }
+    })
+    .replace(/&#[xX]([0-9a-fA-F]+);/g, (match, hex) => {
+      try {
+        return String.fromCodePoint(parseInt(hex, 16));
+      } catch {
+        return match;
+      }
+    })
+    // Named entities
     .replace(/&mdash;/g, '—').replace(/&ndash;/g, '–')
     .replace(/&middot;/g, '·').replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
@@ -124,10 +140,22 @@ async function main() {
     });
   }
 
-  // Newest first.
-  digests.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  // Newest first, with path as secondary sort key for stable ordering.
+  digests.sort((a, b) => {
+    if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+    return a.path < b.path ? -1 : a.path > b.path ? 1 : 0;
+  });
 
-  const output = { generated: new Date().toISOString(), count: digests.length, digests };
+  // Warn if two digests have the same date.
+  const dateSet = new Set();
+  for (const digest of digests) {
+    if (dateSet.has(digest.date)) {
+      console.warn(`Multiple digests have date ${digest.date}; index.html can only frame one per ?date= value.`);
+    }
+    dateSet.add(digest.date);
+  }
+
+  const output = { count: digests.length, digests };
   await writeFile(join(ROOT, 'digests.json'), JSON.stringify(output, null, 2) + '\n');
   console.log(`Wrote digests.json with ${digests.length} digest(s).`);
 }
