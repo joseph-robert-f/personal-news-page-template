@@ -25,6 +25,9 @@ function extractDefaultConfig(source) {
 
 test('assets/site.js DEFAULT_CONFIG matches scripts/config.mjs DEFAULT_CONFIG', async () => {
   const source = await readFile(join(__dirname, '..', 'assets', 'site.js'), 'utf8');
-  const browserConfig = { ...extractDefaultConfig(source) };
-  assert.deepEqual(browserConfig, { ...DEFAULT_CONFIG });
+  // JSON round-trip both sides so the comparison ignores realm-of-origin (the
+  // browser copy is built inside a vm sandbox) and Object.freeze on nested
+  // objects (e.g. the `ai` sub-object). Structural parity is still enforced.
+  const browserConfig = JSON.parse(JSON.stringify(extractDefaultConfig(source)));
+  assert.deepEqual(browserConfig, JSON.parse(JSON.stringify(DEFAULT_CONFIG)));
 });

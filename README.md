@@ -71,6 +71,48 @@ lines no longer bracket it, `node scripts/check-cron.mjs` (run automatically
 in PR CI) fails and prints the exact cron lines to paste into
 `.github/workflows/daily-draft.yml`.
 
+## AI Drafts (optional)
+
+By default the daily workflow writes a placeholder draft for you to fill in. You
+can optionally have it pre-fill the draft with real, sourced content generated
+by Claude with web search. Nothing changes about the publishing rule: the AI
+writes the draft, a human still reviews and merges the PR.
+
+To enable it:
+
+1. Create an Anthropic API key and add it as an Actions secret named
+   `ANTHROPIC_API_KEY` (Settings -> Secrets and variables -> Actions -> New
+   repository secret). Without this secret the workflow behaves exactly as
+   before (placeholder draft), so there is no required setup.
+2. Turn the feature on in `site.config.json`:
+
+   ```json
+   "ai": { "enabled": true }
+   ```
+
+The `ai` object supports these keys (all optional; defaults shown):
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `ai.enabled` | `false` | Master switch, in addition to the secret. Both must be set. |
+| `ai.model` | `"claude-sonnet-5"` | Model used for generation. Set to `"claude-opus-4-8"` for maximum quality at higher cost. |
+| `ai.maxStories` | `4` | Maximum number of story cards (1-8). |
+| `ai.instructions` | `""` | Free-text steering appended to the prompt, e.g. `"Skip celebrity news; prefer primary sources."` |
+
+A partial override such as `"ai": { "enabled": true }` keeps the other defaults.
+
+**Cost:** a single daily run on Sonnet 5 with web search typically costs on the
+order of a few cents. Opus is several times more per run.
+
+**Review obligation:** generated drafts can misattribute or hallucinate sources.
+The draft PR includes a checklist item to **verify every AI-cited source link
+actually supports the claim** before merging. Do not merge an AI draft
+unreviewed.
+
+If generation fails for any reason (missing key, API error, model refusal, or
+the output failing `check-digest.mjs` after a retry), the workflow logs a
+warning and falls back to the placeholder draft — the daily PR always opens.
+
 ## Local Commands
 
 Validate your config:
@@ -121,6 +163,13 @@ Lint a digest against the Content Bar (bullet count, source links, self-containe
 
 ```bash
 node scripts/check-digest.mjs path/to/digest.html
+```
+
+Preview the exact request that the AI draft generator would send (requires
+`ANTHROPIC_API_KEY`; makes no API call):
+
+```bash
+node scripts/generate-digest.mjs --date 2026-07-04 --dry-run
 ```
 
 ## Content Format

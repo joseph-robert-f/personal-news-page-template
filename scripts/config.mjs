@@ -23,6 +23,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   accentColor: '#2563eb',
   draftBranchPrefix: 'daily-digest',
   siteUrl: '',
+  ai: Object.freeze({ enabled: false, model: 'claude-sonnet-5', maxStories: 4, instructions: '' }),
 });
 
 export async function loadSiteConfig(root) {
@@ -36,6 +37,17 @@ export async function loadSiteConfig(root) {
   }
 
   const config = { ...DEFAULT_CONFIG, ...fileConfig };
+  // The top-level spread is shallow, so the nested `ai` object would be
+  // replaced wholesale by a partial user override (e.g. `{ "enabled": true }`
+  // would drop the default model). Deep-merge it so users can set one key and
+  // keep the rest of the defaults. A non-object `ai` is left untouched so
+  // validateSiteConfig can reject it below.
+  const rawAi = fileConfig.ai;
+  if (rawAi && typeof rawAi === 'object' && !Array.isArray(rawAi)) {
+    config.ai = { ...DEFAULT_CONFIG.ai, ...rawAi };
+  } else if (rawAi === undefined) {
+    config.ai = { ...DEFAULT_CONFIG.ai };
+  }
   const errors = validateSiteConfig(config);
   if (errors.length) {
     throw new Error(`Invalid site.config.json:\n- ${errors.join('\n- ')}`);
@@ -116,6 +128,28 @@ export function validateSiteConfig(config) {
     // (letters, digits, parentheses, commas, dots, percent signs, spaces, hyphens)
     else if (!/^(#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?([0-9a-fA-F]{2})?|[a-zA-Z0-9()\s,.%-]+)$/.test(accentColor)) {
       errors.push('accentColor must be a hex color (#rgb, #rrggbb, #rrggbbaa) or a valid CSS color keyword/function');
+    }
+  }
+
+  if (config.ai !== undefined) {
+    const ai = config.ai;
+    if (typeof ai !== 'object' || ai === null || Array.isArray(ai)) {
+      errors.push('ai must be an object');
+    } else {
+      if (typeof ai.enabled !== 'boolean') {
+        errors.push('ai.enabled must be a boolean');
+      }
+      if (typeof ai.model !== 'string' || !ai.model.trim()) {
+        errors.push('ai.model must be a non-empty string');
+      } else if (!/^[a-z0-9.-]+$/i.test(ai.model)) {
+        errors.push('ai.model may only contain letters, numbers, dots, and hyphens');
+      }
+      if (!Number.isInteger(ai.maxStories) || ai.maxStories < 1 || ai.maxStories > 8) {
+        errors.push('ai.maxStories must be an integer between 1 and 8');
+      }
+      if (typeof ai.instructions !== 'string') {
+        errors.push('ai.instructions must be a string');
+      }
     }
   }
 

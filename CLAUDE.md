@@ -6,7 +6,9 @@ brief. Keep the site dependency-free unless a change clearly requires otherwise.
 ## Publishing Rule
 
 Daily drafts should go through pull requests. Do not auto-publish generated
-news content directly to `main`.
+news content directly to `main`. AI-generated drafts (the optional `ai.*`
+config keys) go through this same PR review gate — a human must verify the
+cited sources and merge before anything publishes.
 
 The normal flow is:
 

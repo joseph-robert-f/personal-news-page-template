@@ -88,6 +88,72 @@ test('validateSiteConfig rejects a non-string siteUrl', () => {
   assert.ok(errors.some((e) => e.includes('siteUrl must be a string')));
 });
 
+test('validateSiteConfig accepts the default ai config', () => {
+  assert.deepEqual(validateSiteConfig({ ...DEFAULT_CONFIG, ai: { ...DEFAULT_CONFIG.ai } }), []);
+});
+
+test('validateSiteConfig rejects a non-boolean ai.enabled', () => {
+  const errors = validateSiteConfig({ ...DEFAULT_CONFIG, ai: { ...DEFAULT_CONFIG.ai, enabled: 'yes' } });
+  assert.ok(errors.some((e) => e.includes('ai.enabled must be a boolean')));
+});
+
+test('validateSiteConfig rejects a bad ai.model with illegal characters', () => {
+  const errors = validateSiteConfig({ ...DEFAULT_CONFIG, ai: { ...DEFAULT_CONFIG.ai, model: 'claude sonnet!' } });
+  assert.ok(errors.some((e) => e.includes('ai.model may only contain')));
+});
+
+test('validateSiteConfig rejects an empty ai.model', () => {
+  const errors = validateSiteConfig({ ...DEFAULT_CONFIG, ai: { ...DEFAULT_CONFIG.ai, model: '' } });
+  assert.ok(errors.some((e) => e.includes('ai.model must be a non-empty string')));
+});
+
+test('validateSiteConfig rejects ai.maxStories out of the 1-8 range', () => {
+  for (const bad of [0, 9, 2.5]) {
+    const errors = validateSiteConfig({ ...DEFAULT_CONFIG, ai: { ...DEFAULT_CONFIG.ai, maxStories: bad } });
+    assert.ok(errors.some((e) => e.includes('ai.maxStories must be an integer between 1 and 8')), `expected error for maxStories=${bad}`);
+  }
+});
+
+test('validateSiteConfig accepts ai.maxStories at the boundaries', () => {
+  for (const good of [1, 8]) {
+    assert.deepEqual(validateSiteConfig({ ...DEFAULT_CONFIG, ai: { ...DEFAULT_CONFIG.ai, maxStories: good } }), []);
+  }
+});
+
+test('validateSiteConfig rejects a non-string ai.instructions', () => {
+  const errors = validateSiteConfig({ ...DEFAULT_CONFIG, ai: { ...DEFAULT_CONFIG.ai, instructions: 42 } });
+  assert.ok(errors.some((e) => e.includes('ai.instructions must be a string')));
+});
+
+test('validateSiteConfig rejects a non-object ai', () => {
+  const errors = validateSiteConfig({ ...DEFAULT_CONFIG, ai: 'nope' });
+  assert.ok(errors.some((e) => e.includes('ai must be an object')));
+});
+
+test('loadSiteConfig deep-merges a partial ai override, keeping the other defaults', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'site-config-test-'));
+  try {
+    await writeFile(join(dir, 'site.config.json'), JSON.stringify({ ai: { enabled: true } }));
+    const config = await loadSiteConfig(dir);
+    assert.equal(config.ai.enabled, true);
+    assert.equal(config.ai.model, 'claude-sonnet-5');
+    assert.equal(config.ai.maxStories, 4);
+    assert.equal(config.ai.instructions, '');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('loadSiteConfig rejects an invalid ai override (maxStories 9)', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'site-config-test-'));
+  try {
+    await writeFile(join(dir, 'site.config.json'), JSON.stringify({ ai: { maxStories: 9 } }));
+    await assert.rejects(() => loadSiteConfig(dir), /ai\.maxStories/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('parseIsoParts rejects invalid calendar dates and unparsable strings', () => {
   assert.throws(() => parseIsoParts('2026-02-30'));
   assert.throws(() => parseIsoParts('2026-13-01'));

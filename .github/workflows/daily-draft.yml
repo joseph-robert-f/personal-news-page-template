@@ -79,6 +79,44 @@ jobs:
         run: |
           node scripts/new-digest.mjs --date "$DIGEST_DATE"
           node scripts/build-manifest.mjs
+      - name: Generate AI draft (optional)
+        id: ai
+        if: steps.guard.outputs.should_run == 'true'
+        env:
+          # The API key is scoped to this single step only, so it never leaks
+          # into other steps' environments or logs.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::notice::ANTHROPIC_API_KEY is not set; keeping the placeholder draft."
+            exit 0
+          fi
+          AI_ENABLED="$(node scripts/generate-digest.mjs --print-enabled)"
+          if [ "$AI_ENABLED" != "true" ]; then
+            echo "::notice::ai.enabled is not true in site.config.json; keeping the placeholder draft."
+            exit 0
+          fi
+          set +e
+          node scripts/generate-digest.mjs --date "$DIGEST_DATE"
+          CODE=$?
+          set -e
+          case "$CODE" in
+            0)
+              # AI draft overwrote the placeholder file; refresh the manifest so
+              # its title/summary reflect the generated content.
+              node scripts/build-manifest.mjs
+              echo "AI_DRAFT=true" >> "$GITHUB_ENV"
+              ;;
+            2)
+              echo "::notice::AI draft skipped: ANTHROPIC_API_KEY missing at generation time (exit 2). Keeping the placeholder draft."
+              ;;
+            3)
+              echo "::notice::AI draft skipped: generation failed after retries (exit 3). Keeping the placeholder draft."
+              ;;
+            *)
+              echo "::notice::AI draft skipped: generate-digest exited $CODE. Keeping the placeholder draft."
+              ;;
+          esac
       - name: Commit draft if needed
         if: steps.guard.outputs.should_run == 'true'
         run: |
@@ -112,10 +150,15 @@ jobs:
           - [ ] Add source links for every substantive claim.
           - [ ] Keep the skim surface tight.
           - [ ] Confirm the title date and meta description.
+          - [ ] Verify every AI-cited source link actually supports the claim.
 
           Merging this PR publishes the digest through the Pages workflow.
           EOF
+          PR_TITLE="Draft news digest for $DIGEST_DATE"
+          if [ "$AI_DRAFT" = "true" ]; then
+            PR_TITLE="Draft news digest for $DIGEST_DATE (AI draft)"
+          fi
           gh pr create \
             --draft \
-            --title "Draft news digest for $DIGEST_DATE" \
+            --title "$PR_TITLE" \
             --body-file pr-body.md
