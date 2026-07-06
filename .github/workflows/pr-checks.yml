@@ -19,6 +19,8 @@ jobs:
           node-version: 24
       - name: Validate site config
         run: node scripts/validate-config.mjs
+      - name: Check cron schedule matches site config
+        run: node scripts/check-cron.mjs
       - name: Run unit tests
         run: node --test
       - name: Rebuild manifest and confirm it is up to date

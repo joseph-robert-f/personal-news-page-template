@@ -2,8 +2,19 @@ name: Create daily draft
 
 on:
   schedule:
-    # Default: 06:30 Eastern during standard time. Adjust this cron if you
-    # change site.config.json to another timezone or local publish time.
+    # Two-cron + guard design: cron schedules run in UTC, but
+    # site.config.json's timezone/publishTimeLocal is a local wall-clock
+    # time whose UTC offset changes with DST. Rather than hand-editing this
+    # cron whenever the config changes, we fire twice a day -- once for each
+    # possible UTC offset of the configured local time (here, 06:30 America/
+    # New_York: 10:30 UTC during EDT, 11:30 UTC during EST) -- and let the
+    # "Guard" step below (scripts/should-run-now.mjs) decide which firing is
+    # actually close to the configured time; the other one no-ops. PR CI
+    # runs scripts/check-cron.mjs to make sure these two lines still bracket
+    # the config; if you change timezone or publishTimeLocal to something
+    # these lines no longer cover, that check fails with the correct lines
+    # to paste in.
+    - cron: "30 10 * * *"
     - cron: "30 11 * * *"
   workflow_dispatch:
     inputs:
@@ -31,7 +42,11 @@ jobs:
           node-version: 24
       - name: Validate site config
         run: node scripts/validate-config.mjs
+      - name: Guard
+        id: guard
+        run: node scripts/should-run-now.mjs ${{ github.event_name == 'workflow_dispatch' && '--force' || '' }}
       - name: Resolve draft date and branch
+        if: steps.guard.outputs.should_run == 'true'
         run: |
           if [ -n "$REQUESTED_DATE" ]; then
             DIGEST_DATE="$REQUESTED_DATE"
@@ -49,6 +64,7 @@ jobs:
           echo "DRAFT_BRANCH=$DRAFT_BRANCH" >> "$GITHUB_ENV"
           echo "DRAFT_PATH=$DRAFT_PATH" >> "$GITHUB_ENV"
       - name: Check out draft branch
+        if: steps.guard.outputs.should_run == 'true'
         run: |
           git fetch origin "$DRAFT_BRANCH" || true
           if git show-ref --verify --quiet "refs/remotes/origin/$DRAFT_BRANCH"; then
@@ -59,10 +75,12 @@ jobs:
             git checkout -b "$DRAFT_BRANCH"
           fi
       - name: Create draft digest
+        if: steps.guard.outputs.should_run == 'true'
         run: |
           node scripts/new-digest.mjs --date "$DIGEST_DATE"
           node scripts/build-manifest.mjs
       - name: Commit draft if needed
+        if: steps.guard.outputs.should_run == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -76,6 +94,7 @@ jobs:
           git push --set-upstream origin "$DRAFT_BRANCH"
           echo "DRAFT_HAS_CHANGES=true" >> "$GITHUB_ENV"
       - name: Open draft pull request
+        if: steps.guard.outputs.should_run == 'true'
         run: |
           if [ "$DRAFT_HAS_CHANGES" != "true" ] && [ "$DRAFT_REMOTE_EXISTS" != "true" ]; then
             echo "No branch changes and no remote draft branch; skipping PR creation."

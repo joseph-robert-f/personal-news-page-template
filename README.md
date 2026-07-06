@@ -56,8 +56,20 @@ and opens a draft pull request.
 Review the PR, replace the placeholder text with your brief, add source links,
 and merge it into `main`. The Pages workflow then publishes the digest.
 
-If you change `timezone` or `publishTimeLocal`, also update the cron expression
-in `.github/workflows/daily-draft.yml`. GitHub cron schedules are UTC.
+GitHub cron schedules run in UTC, but `timezone`/`publishTimeLocal` is a local
+wall-clock time whose UTC offset changes with daylight saving time. Instead of
+requiring a manual cron edit whenever you change either setting,
+`.github/workflows/daily-draft.yml` fires twice a day -- once for each
+possible UTC offset of the configured local time -- and a guard step
+(`scripts/should-run-now.mjs`) checks the current wall-clock time in
+`config.timezone` against `publishTimeLocal` (±35 minutes) to decide which of
+the two firings actually creates a draft; the other one no-ops.
+`workflow_dispatch` runs always pass `--force` to bypass the time gate.
+
+If you change `timezone` or `publishTimeLocal` far enough that the two cron
+lines no longer bracket it, `node scripts/check-cron.mjs` (run automatically
+in PR CI) fails and prints the exact cron lines to paste into
+`.github/workflows/daily-draft.yml`.
 
 ## Local Commands
 
