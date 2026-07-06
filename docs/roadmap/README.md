@@ -17,6 +17,7 @@ recommended Anthropic model for executing the work (e.g. via Claude Code).
 | [4. Feeds & discoverability](sprint-4-feeds-discoverability.md) | Major | Atom feed, sitemap, Open Graph metadata, `siteUrl` config key | **Claude Sonnet 5** | New generator script plus config-surface change; standard web-standards work. |
 | [5. DST-safe scheduling](sprint-5-dst-safe-scheduling.md) | Major | Remove the manual cron/timezone sync; guard-step pattern | **Claude Sonnet 5** | Small amount of code but subtle timezone logic that must be tested carefully. |
 | [6. AI-assisted draft generation](sprint-6-ai-draft-generation.md) | Major | Optionally pre-fill the daily draft with sourced content via the Claude API | **Claude Opus 4.8** (`claude-opus-4-8`, $5/$25 per MTok) to implement; **Claude Sonnet 5** as the runtime model inside the workflow | Implementation involves agentic-workflow and prompt design where the strongest coding model pays off; at runtime, Sonnet 5 with web search balances quality and daily cost. |
+| [Gate review](gate-review.md) | Review | Post-sprint release-readiness review: verify every gate, sabotage-test CI, fresh-fork walkthrough, security pass | **Claude Opus 4.8**, high effort | One-time adversarial review of the whole repo — recall matters more than cost, and bug-finding is where the Opus tier separates from Sonnet. |
 
 ## Recommended Order
 
