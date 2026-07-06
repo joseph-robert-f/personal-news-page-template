@@ -4,6 +4,12 @@ import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { formatIsoDate, loadSiteConfig, MONTHS, parseIsoParts } from './config.mjs';
+import {
+  formatWeekRange,
+  renderTemplate,
+  sanitizeFilePart,
+  todayInTimeZone,
+} from './lib/digest.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const TEMPLATE_PATH = join(ROOT, 'templates', 'digest-template.html');
@@ -85,57 +91,6 @@ function parseArgs(argv) {
   return parsed;
 }
 
-function renderTemplate(template, values) {
-  return template.replace(/{{\s*([A-Z0-9_]+)\s*}}/g, (match, key) => {
-    if (!Object.hasOwn(values, key)) throw new Error(`Unknown template placeholder: ${key}`);
-    return escapeHtml(values[key]);
-  });
-}
-
-function todayInTimeZone(timezone) {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(new Date());
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  return `${values.year}-${values.month}-${values.day}`;
-}
-
-function formatWeekRange(date) {
-  const dayOfWeek = date.getUTCDay();
-  const daysSinceMonday = (dayOfWeek + 6) % 7;
-  const start = addDays(date, -daysSinceMonday);
-  const end = addDays(start, 6);
-  if (start.getUTCFullYear() === end.getUTCFullYear()) {
-    return `${formatNoYear(start)} - ${formatNoYear(end)}`;
-  }
-  return `${formatFull(start)} - ${formatFull(end)}`;
-}
-
-function addDays(date, days) {
-  const next = new Date(date.getTime());
-  next.setUTCDate(next.getUTCDate() + days);
-  return next;
-}
-
-function formatNoYear(date) {
-  return `${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]}`;
-}
-
-function formatFull(date) {
-  return `${formatNoYear(date)} ${date.getUTCFullYear()}`;
-}
-
-function sanitizeFilePart(value) {
-  const safe = String(value)
-    .replace(/[\\/:*?"<>|]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-  return safe || 'News Digest';
-}
-
 async function pathExists(path) {
   try {
     await access(path);
@@ -143,14 +98,4 @@ async function pathExists(path) {
   } catch {
     return false;
   }
-}
-
-function escapeHtml(value) {
-  return String(value).replace(/[&<>"']/g, (char) => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-  }[char]));
 }

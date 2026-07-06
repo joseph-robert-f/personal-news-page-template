@@ -14,13 +14,9 @@ import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { formatIsoDate, loadSiteConfig } from './config.mjs';
+import { decodeEntities, parseDate, parseDateFromPath, stripTags } from './lib/manifest.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-
-const MONTHS = {
-  january: 1, february: 2, march: 3, april: 4, may: 5, june: 6,
-  july: 7, august: 8, september: 9, october: 10, november: 11, december: 12,
-};
 
 // Recursively collect .html files under a top-level year folder.
 async function findHtml(dir, rel) {
@@ -32,61 +28,6 @@ async function findHtml(dir, rel) {
     else if (e.isFile() && e.name.toLowerCase().endsWith('.html')) out.push(r);
   }
   return out;
-}
-
-function decodeEntities(s) {
-  return s
-    // Numeric entities: decimal (&#8212;) and hex (&#x2014;, &#X2014;)
-    .replace(/&#(\d+);/g, (match, num) => {
-      try {
-        return String.fromCodePoint(parseInt(num, 10));
-      } catch {
-        return match;
-      }
-    })
-    .replace(/&#[xX]([0-9a-fA-F]+);/g, (match, hex) => {
-      try {
-        return String.fromCodePoint(parseInt(hex, 16));
-      } catch {
-        return match;
-      }
-    })
-    // Named entities
-    .replace(/&mdash;/g, '—').replace(/&ndash;/g, '–')
-    .replace(/&middot;/g, '·').replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"').replace(/&#39;/g, "'");
-}
-
-function stripTags(s) {
-  return decodeEntities(s.replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ').trim();
-}
-
-function iso(year, month, day) {
-  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-}
-
-// "15 June 2026" -> "2026-06-15"
-function parseDate(text) {
-  const m = text.match(/(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/);
-  if (!m) return null;
-  const month = MONTHS[m[2].toLowerCase()];
-  if (!month) return null;
-  return iso(m[3], month, +m[1]);
-}
-
-// Fallback when the <title> date is missing or in an unexpected format: take the
-// year from the top-level "YYYY" folder and the "D Month" from the filename,
-// e.g. "2026/July/29 June - 5 July/2 July Personal News Digest.html" -> 2026-07-02.
-function parseDateFromPath(path) {
-  const segs = path.split('/');
-  const year = /^\d{4}$/.test(segs[0]) ? segs[0] : null;
-  const base = segs[segs.length - 1];
-  const m = base.match(/(\d{1,2})\s+([A-Za-z]+)/);
-  if (!year || !m) return null;
-  const month = MONTHS[m[2].toLowerCase()];
-  if (!month) return null;
-  return iso(year, month, +m[1]);
 }
 
 async function main() {

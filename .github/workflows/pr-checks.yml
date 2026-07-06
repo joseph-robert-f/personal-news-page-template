@@ -1,0 +1,39 @@
+name: PR checks
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Validate site config
+        run: node scripts/validate-config.mjs
+      - name: Run unit tests
+        run: node --test
+      - name: Rebuild manifest and confirm it is up to date
+        run: |
+          node scripts/build-manifest.mjs
+          if ! git diff --exit-code digests.json; then
+            echo "::error::digests.json is out of date. Run 'node scripts/build-manifest.mjs' and commit the result."
+            exit 1
+          fi
+      - name: Lint changed digest files
+        run: |
+          mapfile -t CHANGED_DIGESTS < <(git diff --name-only "origin/${{ github.base_ref }}...HEAD" | grep -E '^[0-9]{4}/.*\.html$' || true)
+          if [ "${#CHANGED_DIGESTS[@]}" -eq 0 ]; then
+            echo "No digest HTML files changed; skipping check-digest.mjs."
+            exit 0
+          fi
+          printf '%s\n' "${CHANGED_DIGESTS[@]}"
+          node scripts/check-digest.mjs "${CHANGED_DIGESTS[@]}"

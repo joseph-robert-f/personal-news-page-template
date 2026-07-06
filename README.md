@@ -82,6 +82,18 @@ Rebuild the manifest:
 node scripts/build-manifest.mjs
 ```
 
+Run the unit tests:
+
+```bash
+node --test
+```
+
+Lint a digest against the Content Bar (bullet count, source links, self-contained assets, etc.):
+
+```bash
+node scripts/check-digest.mjs path/to/digest.html
+```
+
 ## Content Format
 
 Each digest is a self-contained HTML file under:
