@@ -38,8 +38,10 @@ elapsed time or actions only the maintainer can take (listed at the end).
 ## Outstanding for sign-off (maintainer)
 
 1. Open the live `feed.xml` once in a browser or feed reader (Gate 4 tick).
-2. After 2–3 days: check the *Create daily draft* run list shows one
-   proceed + one skip per day (Gate 5).
+2. Gate 5 live check moved to the maintainer's personal instance: the
+   template repo's schedule is intentionally dormant (see daily-draft.yml).
+   After 2–3 days of a real instance running, its *Create daily draft* run
+   list should show one proceed + one skip per day.
 3. First live AI draft on an instance with the secret: confirm generation
    succeeds and cited sources hold up (Gate 6 live, finding 7).
 4. Fresh-fork walkthrough from the template, README-only, ≤30 min (Gate 8).
