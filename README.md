@@ -23,29 +23,36 @@ scripts that run on GitHub's hosted runners.
 
 ## Setup
 
-1. Create a new repository from this template.
-2. Edit `site.config.json`:
-   - `siteTitle`: name shown in the header and browser title
-   - `digestTitlePrefix`: prefix used in each digest `<title>`
-   - `topic`: what the daily brief tracks
-   - `audience`: who the brief is written for
-   - `timezone` and `publishTimeLocal`: when your routine should run
-   - `accentColor`: CSS color used for links and badges. The site supports
-     light and dark mode (via `prefers-color-scheme`); if you pick a custom
-     accent color, check it against both the light background and the dark
-     background (see the `@media (prefers-color-scheme: dark)` block in
-     `index.html`) for readable contrast before publishing.
-   - `siteUrl` (optional): your GitHub Pages URL, e.g.
-     `https://user.github.io/repo` (no trailing slash needed). Set this to
-     enable the generated Atom feed (`feed.xml`) and sitemap
-     (`sitemap.xml`); while it is empty, the build skips both with a notice.
-3. Enable GitHub Pages:
-   - Settings -> Pages -> Build and deployment -> Source: GitHub Actions
-4. Enable GitHub Actions if your fork asks for approval.
-5. Run the "Create daily draft" workflow manually once, or wait for the schedule.
+Two steps get a working site:
 
-The deploy workflow validates the site on every push. If Pages is not enabled
-yet, it exits successfully with a notice and skips deployment.
+1. Click **Use this template** to create your repository.
+2. Enable GitHub Pages: **Settings -> Pages -> Build and deployment ->
+   Source: GitHub Actions** (and approve Actions if your fork asks).
+
+That's it -- the site deploys, and the daily workflow starts opening draft
+PRs on schedule. Everything below is optional tuning.
+
+**Have Claude write your drafts (recommended):** add one repository secret
+named `ANTHROPIC_API_KEY` (**Settings -> Secrets and variables -> Actions**)
+with an API key from [console.anthropic.com](https://console.anthropic.com/).
+The secret is the switch -- with it set, each daily draft arrives pre-filled
+with real, sourced stories for you to review; without it, drafts are
+placeholders you fill in by hand. See [AI Drafts](#ai-drafts-optional).
+
+**Make it yours** by editing `site.config.json` (a plain JSON file; every key
+is optional and has a sensible default):
+
+- `topic` / `audience`: what the brief tracks and who it's for. These two
+  steer everything the AI writes -- set them first.
+- `siteTitle`, `digestTitlePrefix`, `eyebrow`: naming and branding.
+- `timezone` and `publishTimeLocal`: when the daily draft is created. If you
+  move these far from the default (06:30 US Eastern), CI will tell you the
+  two cron lines to paste into the workflow -- see Daily Routine.
+- `accentColor`: CSS color for links and badges. The site supports light and
+  dark mode; check a custom accent against both backgrounds.
+- `siteUrl`: leave empty on a normal GitHub Pages deployment -- the Atom feed
+  and sitemap URLs are derived automatically from your repository name. Set
+  it only for a custom domain.
 
 ## Daily Routine
 
@@ -78,23 +85,18 @@ can optionally have it pre-fill the draft with real, sourced content generated
 by Claude with web search. Nothing changes about the publishing rule: the AI
 writes the draft, a human still reviews and merges the PR.
 
-To enable it:
+To enable it, add **one repository secret**: create an Anthropic API key and
+save it as an Actions secret named `ANTHROPIC_API_KEY` (Settings -> Secrets
+and variables -> Actions -> New repository secret). The secret is the switch:
+with it set, AI drafts are on; without it, the workflow writes placeholder
+drafts exactly as before. No config change is needed.
 
-1. Create an Anthropic API key and add it as an Actions secret named
-   `ANTHROPIC_API_KEY` (Settings -> Secrets and variables -> Actions -> New
-   repository secret). Without this secret the workflow behaves exactly as
-   before (placeholder draft), so there is no required setup.
-2. Turn the feature on in `site.config.json`:
-
-   ```json
-   "ai": { "enabled": true }
-   ```
-
-The `ai` object supports these keys (all optional; defaults shown):
+The optional `ai` object in `site.config.json` tunes the behavior (all keys
+optional; defaults shown):
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `ai.enabled` | `false` | Master switch, in addition to the secret. Both must be set. |
+| `ai.enabled` | `true` | Set to `false` to pause AI drafts without deleting the secret. |
 | `ai.model` | `"claude-sonnet-5"` | Model used for generation. Set to `"claude-opus-4-8"` for maximum quality at higher cost. |
 | `ai.maxStories` | `4` | Maximum number of story cards (1-8). |
 | `ai.instructions` | `""` | Free-text steering appended to the prompt, e.g. `"Skip celebrity news; prefer primary sources."` |
