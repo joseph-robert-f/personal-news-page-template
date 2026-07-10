@@ -23,11 +23,17 @@ scripts that run on GitHub's hosted runners.
 
 ## Setup
 
-Two steps get a working site:
+Three steps get a working site:
 
 1. Click **Use this template** to create your repository.
 2. Enable GitHub Pages: **Settings -> Pages -> Build and deployment ->
    Source: GitHub Actions** (and approve Actions if your fork asks).
+3. Let the daily workflow open PRs: **Settings -> Actions -> General ->
+   Workflow permissions -> check "Allow GitHub Actions to create and approve
+   pull requests"**. GitHub disables this by default in new repositories;
+   without it, the daily draft branch is pushed but the PR creation step
+   fails with "GitHub Actions is not permitted to create or approve pull
+   requests".
 
 That's it -- the site deploys, and the daily workflow starts opening draft
 PRs on schedule. Everything below is optional tuning.

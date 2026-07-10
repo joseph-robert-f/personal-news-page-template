@@ -91,6 +91,32 @@ test('DIGEST_SCHEMA sets additionalProperties:false at every object level', () =
   assert.deepEqual(source.required, ['title', 'url']);
 });
 
+test('DIGEST_SCHEMA avoids keywords the structured-output API rejects', () => {
+  // The Messages API structured-output validator rejects array count
+  // constraints, string length constraints, and numeric range constraints
+  // (confirmed live: "For 'array' type, property 'maxItems' is not
+  // supported"). Those limits live in the prompt, validatePayload, and
+  // renderDigest instead.
+  const banned = [
+    'minItems', 'maxItems',
+    'minLength', 'maxLength',
+    'minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum', 'multipleOf',
+    'pattern', 'uniqueItems',
+  ];
+  const walk = (node, path) => {
+    if (Array.isArray(node)) {
+      node.forEach((item, i) => walk(item, `${path}[${i}]`));
+      return;
+    }
+    if (!node || typeof node !== 'object') return;
+    for (const key of Object.keys(node)) {
+      assert.ok(!banned.includes(key), `${path}.${key} is not supported by structured outputs`);
+      walk(node[key], `${path}.${key}`);
+    }
+  };
+  walk(DIGEST_SCHEMA, 'DIGEST_SCHEMA');
+});
+
 test('validatePayload accepts a good fixture', () => {
   assert.deepEqual(validatePayload(goodPayload()), []);
 });
