@@ -16,11 +16,12 @@
   :root {
     --ink: #17181c;
     --muted: #6b7280;
-    --faint: #9aa1a9;
+    --faint: #6d737c;
     --line: #ececef;
     --bg: #ffffff;
     --panel: #fafafa;
     --accent: #2563eb;
+    --link: #2563eb;
     --error: #b42318;
     --nav-hover: #f4f5f7;
   }
@@ -29,6 +30,7 @@
       --ink: #e7e9ec;
       --muted: #9aa3ad;
       --faint: #7d8592;
+      --link: #5b8def;
       --line: #2b2e34;
       --bg: #101114;
       --panel: #1a1c20;
@@ -52,7 +54,7 @@
   .brand { display: flex; flex-direction: column; line-height: 1.1; text-decoration: none; }
   .brand .eyebrow {
     font-size: 0.62rem; font-weight: 600; letter-spacing: 0.14em;
-    text-transform: uppercase; color: var(--accent);
+    text-transform: uppercase; color: var(--link);
   }
   .brand .name { font-size: 1.02rem; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
   .latest { color: var(--muted); font-size: 0.88rem; }
@@ -63,7 +65,7 @@
     padding: 0.35rem 0.7rem; border-radius: 7px;
   }
   nav a:hover { color: var(--ink); background: var(--nav-hover); }
-  nav a.primary { color: var(--accent); }
+  nav a.primary { color: var(--link); }
   nav a[hidden] { display: none; }
   nav a:focus-visible, .brand:focus-visible {
     outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 7px;
@@ -85,10 +87,15 @@
   .status strong { display: block; color: var(--ink); font-size: 1.25rem; margin-bottom: 0.45rem; }
   .status.error { color: var(--error); }
   .status.error strong { color: var(--error); }
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
 </style>
 </head>
 <body>
 <a class="skip-link" href="#frame-wrap">Skip to digest</a>
+<h1 class="sr-only" id="page-title">Personal News Digest</h1>
 <header class="bar">
   <a class="brand" href="./" aria-label="Home">
     <span class="eyebrow" id="brand-eyebrow">Daily Brief</span>
@@ -114,10 +121,14 @@
   const openNew = document.getElementById('open-new');
 
   function applyConfig(config) {
-    document.documentElement.style.setProperty('--accent', config.accentColor);
+    if (config.accentColor !== SiteCommon.DEFAULT_CONFIG.accentColor) {
+      document.documentElement.style.setProperty('--accent', config.accentColor);
+      document.documentElement.style.setProperty('--link', config.accentColor);
+    }
     document.title = config.siteTitle;
     document.getElementById('brand-eyebrow').textContent = config.eyebrow;
     document.getElementById('brand-name').textContent = config.siteTitle;
+    document.getElementById('page-title').textContent = config.siteTitle;
     frame.title = config.siteTitle;
   }
 

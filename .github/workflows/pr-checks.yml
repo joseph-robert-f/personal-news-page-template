@@ -31,8 +31,10 @@ jobs:
             exit 1
           fi
       - name: Lint changed digest files
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
-          mapfile -t CHANGED_DIGESTS < <(git diff --name-only "origin/${{ github.base_ref }}...HEAD" | grep -E '^[0-9]{4}/.*\.html$' || true)
+          mapfile -t CHANGED_DIGESTS < <(git diff --name-only "origin/${BASE_REF}...HEAD" | grep -E '^[0-9]{4}/.*\.html$' || true)
           if [ "${#CHANGED_DIGESTS[@]}" -eq 0 ]; then
             echo "No digest HTML files changed; skipping check-digest.mjs."
             exit 0

@@ -29,6 +29,12 @@ permissions:
 
 jobs:
   draft:
+    # The template repository itself keeps its schedule dormant -- scheduled
+    # firings would only open pointless placeholder PRs here. Repositories
+    # created from the template have a different name, so this condition is
+    # true for them and their daily schedule works with no setup. Manual runs
+    # (workflow_dispatch) work everywhere, including on the template.
+    if: github.event_name != 'schedule' || github.repository != 'joseph-robert-f/personal-news-page-template'
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}

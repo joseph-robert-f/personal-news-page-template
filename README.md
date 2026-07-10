@@ -48,6 +48,9 @@ is optional and has a sensible default):
 - `timezone` and `publishTimeLocal`: when the daily draft is created. If you
   move these far from the default (06:30 US Eastern), CI will tell you the
   two cron lines to paste into the workflow -- see Daily Routine.
+- `description`: one-line site description (used in the feed and meta tags).
+- `coverageWindow`: the period each digest covers (default "last 24 hours");
+  shown on digests and used to steer AI drafts.
 - `accentColor`: CSS color for links and badges. The site supports light and
   dark mode; check a custom accent against both backgrounds.
 - `siteUrl`: leave empty on a normal GitHub Pages deployment -- the Atom feed
@@ -55,6 +58,13 @@ is optional and has a sensible default):
   it only for a custom domain.
 
 ## Daily Routine
+
+> **Note for this template repository:** the daily schedule is dormant on the
+> template itself (it would only produce placeholder PRs). In a repository
+> created from the template, the schedule runs automatically -- each copy's
+> workflow is fully independent and uses that repository's own Actions quota
+> and secrets.
+
 
 The scheduled workflow does not publish automatically. It creates a branch like
 `daily-digest/2026-07-04`, writes a draft digest file, rebuilds `digests.json`,

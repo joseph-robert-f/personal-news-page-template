@@ -3,8 +3,9 @@
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { formatIsoDate, loadSiteConfig, MONTHS, parseIsoParts } from './config.mjs';
+import { DEFAULT_CONFIG, formatIsoDate, loadSiteConfig, MONTHS, parseIsoParts } from './config.mjs';
 import {
+  darkLinkColor,
   formatWeekRange,
   renderTemplate,
   sanitizeFilePart,
@@ -44,6 +45,7 @@ const description = `${config.digestTitlePrefix} for ${displayDate}, covering ${
 const template = await readFile(TEMPLATE_PATH, 'utf8');
 const content = renderTemplate(template, {
   ACCENT_COLOR: config.accentColor,
+  ACCENT_COLOR_DARK: darkLinkColor(config.accentColor, DEFAULT_CONFIG.accentColor),
   AUDIENCE: config.audience,
   COVERAGE_WINDOW: config.coverageWindow,
   DATE_DISPLAY: displayDate,
