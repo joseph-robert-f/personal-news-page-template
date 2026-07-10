@@ -3,7 +3,8 @@
 // rendering. No network and no fs here so every piece is unit testable
 // offline, consistent with the other scripts/lib/ modules.
 
-import { escapeHtml, renderTemplate } from './digest.mjs';
+import { darkLinkColor, escapeHtml, renderTemplate } from './digest.mjs';
+import { DEFAULT_CONFIG } from '../config.mjs';
 
 // JSON schema for the Messages API structured output. Structured outputs
 // require additionalProperties:false at every object level, so it is set
@@ -183,6 +184,7 @@ export function renderDigest(template, config, payload, meta = {}) {
 
   const html = renderTemplate(template, {
     ACCENT_COLOR: config.accentColor,
+    ACCENT_COLOR_DARK: darkLinkColor(config.accentColor, DEFAULT_CONFIG.accentColor),
     AUDIENCE: config.audience,
     COVERAGE_WINDOW: config.coverageWindow,
     DATE_DISPLAY: displayDate,

@@ -19,6 +19,7 @@
     --line: #ececef;
     --bg: #ffffff;
     --accent: #2563eb;
+    --link: #2563eb;
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -26,6 +27,7 @@
       --muted: #9aa3ad;
       --line: #2b2e34;
       --bg: #101114;
+      --link: #5b8def;
     }
   }
   * { box-sizing: border-box; }
@@ -38,13 +40,13 @@
   .masthead { margin-bottom: 2rem; }
   .eyebrow {
     font-size: 0.72rem; font-weight: 600; letter-spacing: 0.14em;
-    text-transform: uppercase; color: var(--accent); margin-bottom: 0.4rem;
+    text-transform: uppercase; color: var(--link); margin-bottom: 0.4rem;
   }
   h1 { font-size: 1.9rem; font-weight: 700; letter-spacing: -0.02em; margin: 0; }
   p { color: var(--muted); }
   .links { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--line); }
   a {
-    color: var(--accent); text-decoration: none; font-weight: 500;
+    color: var(--link); text-decoration: none; font-weight: 500;
     margin-right: 1.25rem;
   }
   a:hover { text-decoration: underline; }

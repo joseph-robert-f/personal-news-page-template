@@ -37,6 +37,11 @@ merges before anything publishes.
 - `digests.json` - generated manifest.
 - `scripts/build-manifest.mjs` - regenerates the manifest.
 - `scripts/new-digest.mjs` - creates dated digest drafts.
+- `scripts/check-digest.mjs` - lints digests against the Content Bar.
+- `scripts/check-cron.mjs` - verifies the workflow cron covers the config.
+- `scripts/should-run-now.mjs` - schedule guard used by the daily workflow.
+- `scripts/build-feed.mjs` - generates feed.xml and sitemap.xml at deploy time.
+- `scripts/generate-digest.mjs` - optional AI draft generation (needs API key).
 - `templates/digest-template.html` - editable digest starter.
 - `.github/workflows/daily-draft.yml` - scheduled draft PR routine.
 - `.github/workflows/build.yml` - GitHub Pages deployment.

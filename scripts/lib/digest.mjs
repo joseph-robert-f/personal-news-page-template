@@ -63,3 +63,12 @@ export function renderTemplate(template, values) {
     return escapeHtml(values[key]);
   });
 }
+
+// Dark-mode link color for generated digests. The default light accent
+// (#2563eb) is too low-contrast as text on the dark background, so digests
+// generated with the default get a lightened variant; a user-customized
+// accent is kept as-is (the README tells fork owners to check custom accents
+// against both themes).
+export function darkLinkColor(accentColor, defaultAccentColor) {
+  return accentColor === defaultAccentColor ? '#5b8def' : accentColor;
+}

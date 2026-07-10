@@ -18,11 +18,12 @@
     :root {
       --ink: #17181c;
       --muted: #6b7280;
-      --faint: #9aa1a9;
+      --faint: #6d737c;
       --line: #ececef;
       --bg: #ffffff;
       --panel: #fafafa;
       --accent: {{ACCENT_COLOR}};
+      --link: {{ACCENT_COLOR}};
       --maxw: 720px;
       --lead: #2c2f36;
       --detail: #33363d;
@@ -34,6 +35,7 @@
         --ink: #e7e9ec;
         --muted: #9aa3ad;
         --faint: #7d8592;
+        --link: {{ACCENT_COLOR_DARK}};
         --line: #2b2e34;
         --bg: #101114;
         --panel: #1a1c20;
@@ -56,7 +58,7 @@
     .masthead { margin-bottom: 2.25rem; }
     .eyebrow {
       font-size: 0.72rem; font-weight: 600; letter-spacing: 0.14em;
-      text-transform: uppercase; color: var(--accent); margin-bottom: 0.5rem;
+      text-transform: uppercase; color: var(--link); margin-bottom: 0.5rem;
     }
     .masthead h1 {
       font-size: 2rem; font-weight: 700; letter-spacing: -0.02em;
@@ -103,7 +105,7 @@
     .kicker { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem; }
     .tag {
       font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em;
-      text-transform: uppercase; color: var(--accent);
+      text-transform: uppercase; color: var(--link);
     }
     .kicker .when { font-size: 0.78rem; color: var(--faint); }
     .story h3 {
@@ -116,7 +118,7 @@
     details { margin-top: 0.75rem; }
     summary {
       cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 0.35rem;
-      font-size: 0.82rem; font-weight: 600; color: var(--accent);
+      font-size: 0.82rem; font-weight: 600; color: var(--link);
       user-select: none;
     }
     summary::-webkit-details-marker { display: none; }
@@ -127,7 +129,7 @@
     .detail p { margin: 0 0 0.75rem; }
     ul.sources { margin: 0.5rem 0 0; padding-left: 1.1rem; font-size: 0.85rem; color: var(--muted); }
     ul.sources li { margin-bottom: 0.2rem; }
-    a { color: var(--accent); text-decoration: none; }
+    a { color: var(--link); text-decoration: none; }
     a:hover { text-decoration: underline; }
 
     footer {
