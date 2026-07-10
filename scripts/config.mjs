@@ -6,6 +6,10 @@ export const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
+// NOTE: DEFAULT_CONFIG is mirrored in assets/site.js for the browser pages
+// (index.html / archive.html), which can't import this Node module directly.
+// test/site-js.test.mjs asserts the two copies stay equal. If you change one,
+// change the other.
 export const DEFAULT_CONFIG = Object.freeze({
   siteTitle: 'Personal News Digest',
   description: 'A personal daily news page for the topics you care about.',
@@ -18,6 +22,8 @@ export const DEFAULT_CONFIG = Object.freeze({
   publishTimeLocal: '06:30',
   accentColor: '#2563eb',
   draftBranchPrefix: 'daily-digest',
+  siteUrl: '',
+  ai: Object.freeze({ enabled: false, model: 'claude-sonnet-5', maxStories: 4, instructions: '' }),
 });
 
 export async function loadSiteConfig(root) {
@@ -31,9 +37,25 @@ export async function loadSiteConfig(root) {
   }
 
   const config = { ...DEFAULT_CONFIG, ...fileConfig };
+  // The top-level spread is shallow, so the nested `ai` object would be
+  // replaced wholesale by a partial user override (e.g. `{ "enabled": true }`
+  // would drop the default model). Deep-merge it so users can set one key and
+  // keep the rest of the defaults. A non-object `ai` is left untouched so
+  // validateSiteConfig can reject it below.
+  const rawAi = fileConfig.ai;
+  if (rawAi && typeof rawAi === 'object' && !Array.isArray(rawAi)) {
+    config.ai = { ...DEFAULT_CONFIG.ai, ...rawAi };
+  } else if (rawAi === undefined) {
+    config.ai = { ...DEFAULT_CONFIG.ai };
+  }
   const errors = validateSiteConfig(config);
   if (errors.length) {
     throw new Error(`Invalid site.config.json:\n- ${errors.join('\n- ')}`);
+  }
+  // Normalize: strip a single trailing slash so callers can always build
+  // URLs as `${siteUrl}/path` without worrying about a doubled slash.
+  if (typeof config.siteUrl === 'string') {
+    config.siteUrl = config.siteUrl.replace(/\/$/, '');
   }
   return config;
 }
@@ -80,6 +102,55 @@ export function validateSiteConfig(config) {
     !/^[A-Za-z0-9._/-]+$/.test(config.draftBranchPrefix)
   ) {
     errors.push('draftBranchPrefix may only contain letters, numbers, dots, slashes, underscores, and hyphens');
+  }
+
+  if (typeof config.siteUrl !== 'string') {
+    errors.push('siteUrl must be a string');
+  } else if (config.siteUrl.trim()) {
+    let parsed;
+    try {
+      parsed = new URL(config.siteUrl.trim());
+    } catch {
+      errors.push('siteUrl must be a valid absolute URL, such as https://user.github.io/repo');
+    }
+    if (parsed && parsed.protocol !== 'https:') {
+      errors.push('siteUrl must use the https:// protocol');
+    }
+  }
+
+  if (typeof config.accentColor === 'string' && config.accentColor.trim()) {
+    const accentColor = config.accentColor.trim();
+    // Reject dangerous characters: ; { } <
+    if (/[;{}]|</.test(accentColor)) {
+      errors.push('accentColor must not contain semicolons, braces, or angle brackets');
+    }
+    // Allow hex colors (#rgb, #rrggbb, #rrggbbaa) or CSS keywords/functions
+    // (letters, digits, parentheses, commas, dots, percent signs, spaces, hyphens)
+    else if (!/^(#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?([0-9a-fA-F]{2})?|[a-zA-Z0-9()\s,.%-]+)$/.test(accentColor)) {
+      errors.push('accentColor must be a hex color (#rgb, #rrggbb, #rrggbbaa) or a valid CSS color keyword/function');
+    }
+  }
+
+  if (config.ai !== undefined) {
+    const ai = config.ai;
+    if (typeof ai !== 'object' || ai === null || Array.isArray(ai)) {
+      errors.push('ai must be an object');
+    } else {
+      if (typeof ai.enabled !== 'boolean') {
+        errors.push('ai.enabled must be a boolean');
+      }
+      if (typeof ai.model !== 'string' || !ai.model.trim()) {
+        errors.push('ai.model must be a non-empty string');
+      } else if (!/^[a-z0-9.-]+$/i.test(ai.model)) {
+        errors.push('ai.model may only contain letters, numbers, dots, and hyphens');
+      }
+      if (!Number.isInteger(ai.maxStories) || ai.maxStories < 1 || ai.maxStories > 8) {
+        errors.push('ai.maxStories must be an integer between 1 and 8');
+      }
+      if (typeof ai.instructions !== 'string') {
+        errors.push('ai.instructions must be a string');
+      }
+    }
   }
 
   return errors;

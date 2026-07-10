@@ -6,15 +6,18 @@ brief. Keep the site dependency-free unless a change clearly requires otherwise.
 ## Publishing Rule
 
 Daily drafts should go through pull requests. Do not auto-publish generated
-news content directly to `main`.
+news content directly to `main`. AI-generated drafts (the optional `ai.*`
+config keys) go through this same PR review gate — a human must verify the
+cited sources and merge before anything publishes.
 
 The normal flow is:
 
 1. Generate a draft with `node scripts/new-digest.mjs`.
 2. Fill in the brief using `templates/digest-template.html` as the structure.
 3. Run `node scripts/build-manifest.mjs`.
-4. Open or update a draft PR.
-5. Merge only after human review.
+4. Run `node --test` and `node scripts/check-digest.mjs <file>`.
+5. Open or update a draft PR.
+6. Merge only after human review.
 
 ## Content Bar
 

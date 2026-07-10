@@ -28,6 +28,27 @@ jobs:
         run: node scripts/validate-config.mjs
       - name: Generate digests.json
         run: node scripts/build-manifest.mjs
+      - name: Generate feed and sitemap
+        run: node scripts/build-feed.mjs
+      - name: Stage site files for publishing
+        run: |
+          mkdir -p _site
+          cp index.html archive.html 404.html digests.json site.config.json _site/
+          cp -r assets _site/
+          touch _site/.nojekyll
+          # feed.xml/sitemap.xml are only written when siteUrl is configured;
+          # skip them without failing the build otherwise.
+          for f in feed.xml sitemap.xml; do
+            if [ -f "$f" ]; then
+              cp "$f" _site/
+            fi
+          done
+          # Copy any top-level YYYY/ directories
+          for dir in [0-9][0-9][0-9][0-9]/; do
+            if [ -d "$dir" ]; then
+              cp -r "$dir" _site/
+            fi
+          done
       - name: Check GitHub Pages setup
         id: pages
         env:
@@ -54,7 +75,7 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         if: steps.pages.outputs.enabled == 'true'
         with:
-          path: .
+          path: _site
 
   deploy:
     needs: build

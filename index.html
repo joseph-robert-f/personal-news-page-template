@@ -3,8 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
 <link rel="icon" href="data:,">
+<link rel="alternate" type="application/atom+xml" title="Atom feed" href="./feed.xml">
 <title>Personal News Digest</title>
+<!-- Static Open Graph fallback for crawlers: og:title/og:description loaded
+     from site.config.json at runtime aren't visible to non-JS crawlers. Fork
+     owners should edit these two tags to match their config. -->
+<meta property="og:title" content="Personal News Digest">
+<meta property="og:description" content="A personal daily news page for the topics you care about.">
 <style>
   :root {
     --ink: #17181c;
@@ -14,6 +21,20 @@
     --bg: #ffffff;
     --panel: #fafafa;
     --accent: #2563eb;
+    --error: #b42318;
+    --nav-hover: #f4f5f7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #e7e9ec;
+      --muted: #9aa3ad;
+      --faint: #7d8592;
+      --line: #2b2e34;
+      --bg: #101114;
+      --panel: #1a1c20;
+      --error: #ff6b6b;
+      --nav-hover: #24262c;
+    }
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
@@ -41,9 +62,19 @@
     color: var(--muted); text-decoration: none; font-size: 0.86rem; font-weight: 500;
     padding: 0.35rem 0.7rem; border-radius: 7px;
   }
-  nav a:hover { color: var(--ink); background: #f4f5f7; }
+  nav a:hover { color: var(--ink); background: var(--nav-hover); }
   nav a.primary { color: var(--accent); }
   nav a[hidden] { display: none; }
+  nav a:focus-visible, .brand:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 7px;
+  }
+  .skip-link {
+    position: absolute; left: 0.5rem; top: -3rem;
+    background: var(--accent); color: #fff; padding: 0.5rem 0.9rem;
+    border-radius: 6px; text-decoration: none; font-size: 0.85rem; font-weight: 600;
+    z-index: 10; transition: top 0.15s ease;
+  }
+  .skip-link:focus { top: 0.5rem; }
   .frame-wrap { flex: 1; position: relative; min-height: 0; }
   iframe { border: 0; width: 100%; height: 100%; position: absolute; inset: 0; background: var(--bg); }
   iframe[hidden] { display: none; }
@@ -52,11 +83,12 @@
     max-width: 38rem; margin: 0 auto;
   }
   .status strong { display: block; color: var(--ink); font-size: 1.25rem; margin-bottom: 0.45rem; }
-  .status.error { color: #b42318; }
-  .status.error strong { color: #b42318; }
+  .status.error { color: var(--error); }
+  .status.error strong { color: var(--error); }
 </style>
 </head>
 <body>
+<a class="skip-link" href="#frame-wrap">Skip to digest</a>
 <header class="bar">
   <a class="brand" href="./" aria-label="Home">
     <span class="eyebrow" id="brand-eyebrow">Daily Brief</span>
@@ -68,49 +100,18 @@
     <a class="primary" id="open-new" href="#" target="_blank" rel="noopener">Open full &nearr;</a>
   </nav>
 </header>
-<div class="frame-wrap">
+<div class="frame-wrap" id="frame-wrap">
   <iframe id="frame" title="Digest" hidden></iframe>
-  <div class="status" id="status">Loading latest digest&hellip;</div>
+  <div class="status" id="status" role="status" aria-live="polite">Loading latest digest&hellip;</div>
 </div>
+<script src="./assets/site.js"></script>
 <script>
 (async function () {
-  const DEFAULT_CONFIG = {
-    siteTitle: 'Personal News Digest',
-    description: 'A personal daily news page for the topics you care about.',
-    eyebrow: 'Daily Brief',
-    digestTitlePrefix: 'Personal News Digest',
-    topic: 'news you care about',
-    audience: 'a personal daily reader',
-    coverageWindow: 'last 24 hours',
-    timezone: 'America/New_York',
-    publishTimeLocal: '06:30',
-    accentColor: '#2563eb',
-    draftBranchPrefix: 'daily-digest'
-  };
-  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const { formatDate, escapeHtml, encodePath, loadSiteConfig } = window.SiteCommon;
   const statusEl = document.getElementById('status');
   const frame = document.getElementById('frame');
   const latestEl = document.getElementById('latest');
   const openNew = document.getElementById('open-new');
-
-  const formatDate = (iso) => {
-    const parts = iso.split('-').map(Number);
-    return parts[2] + ' ' + MONTHS[parts[1] - 1] + ' ' + parts[0];
-  };
-  const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const encodePath = (p) => p.split('/').map(encodeURIComponent).join('/');
-
-  async function loadConfig() {
-    try {
-      const res = await fetch('./site.config.json', { cache: 'no-cache' });
-      if (!res.ok) return DEFAULT_CONFIG;
-      const config = await res.json();
-      return Object.assign({}, DEFAULT_CONFIG, config || {});
-    } catch {
-      return DEFAULT_CONFIG;
-    }
-  }
 
   function applyConfig(config) {
     document.documentElement.style.setProperty('--accent', config.accentColor);
@@ -121,7 +122,7 @@
   }
 
   try {
-    const config = await loadConfig();
+    const config = await loadSiteConfig();
     applyConfig(config);
 
     const res = await fetch('./digests.json', { cache: 'no-cache' });
@@ -139,7 +140,8 @@
 
     const params = new URLSearchParams(location.search);
     const wantPath = params.get('path');
-    const wantDate = params.get('date');
+    const wantDateParam = params.get('date');
+    const wantDate = wantDateParam && /^\d{4}-\d{2}-\d{2}$/.test(wantDateParam) ? wantDateParam : null;
     let entry = list[0];
     if (wantPath) entry = list.find((d) => d.path === wantPath) || entry;
     else if (wantDate) entry = list.find((d) => d.date === wantDate) || entry;

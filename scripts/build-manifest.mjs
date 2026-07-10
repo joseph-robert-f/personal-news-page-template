@@ -14,13 +14,9 @@ import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { formatIsoDate, loadSiteConfig } from './config.mjs';
+import { decodeEntities, parseDate, parseDateFromPath, stripTags } from './lib/manifest.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-
-const MONTHS = {
-  january: 1, february: 2, march: 3, april: 4, may: 5, june: 6,
-  july: 7, august: 8, september: 9, october: 10, november: 11, december: 12,
-};
 
 // Recursively collect .html files under a top-level year folder.
 async function findHtml(dir, rel) {
@@ -32,45 +28,6 @@ async function findHtml(dir, rel) {
     else if (e.isFile() && e.name.toLowerCase().endsWith('.html')) out.push(r);
   }
   return out;
-}
-
-function decodeEntities(s) {
-  return s
-    .replace(/&mdash;/g, '—').replace(/&ndash;/g, '–')
-    .replace(/&middot;/g, '·').replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"').replace(/&#39;/g, "'");
-}
-
-function stripTags(s) {
-  return decodeEntities(s.replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ').trim();
-}
-
-function iso(year, month, day) {
-  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-}
-
-// "15 June 2026" -> "2026-06-15"
-function parseDate(text) {
-  const m = text.match(/(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/);
-  if (!m) return null;
-  const month = MONTHS[m[2].toLowerCase()];
-  if (!month) return null;
-  return iso(m[3], month, +m[1]);
-}
-
-// Fallback when the <title> date is missing or in an unexpected format: take the
-// year from the top-level "YYYY" folder and the "D Month" from the filename,
-// e.g. "2026/July/29 June - 5 July/2 July Personal News Digest.html" -> 2026-07-02.
-function parseDateFromPath(path) {
-  const segs = path.split('/');
-  const year = /^\d{4}$/.test(segs[0]) ? segs[0] : null;
-  const base = segs[segs.length - 1];
-  const m = base.match(/(\d{1,2})\s+([A-Za-z]+)/);
-  if (!year || !m) return null;
-  const month = MONTHS[m[2].toLowerCase()];
-  if (!month) return null;
-  return iso(year, month, +m[1]);
 }
 
 async function main() {
@@ -124,10 +81,22 @@ async function main() {
     });
   }
 
-  // Newest first.
-  digests.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  // Newest first, with path as secondary sort key for stable ordering.
+  digests.sort((a, b) => {
+    if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+    return a.path < b.path ? -1 : a.path > b.path ? 1 : 0;
+  });
 
-  const output = { generated: new Date().toISOString(), count: digests.length, digests };
+  // Warn if two digests have the same date.
+  const dateSet = new Set();
+  for (const digest of digests) {
+    if (dateSet.has(digest.date)) {
+      console.warn(`Multiple digests have date ${digest.date}; index.html can only frame one per ?date= value.`);
+    }
+    dateSet.add(digest.date);
+  }
+
+  const output = { count: digests.length, digests };
   await writeFile(join(ROOT, 'digests.json'), JSON.stringify(output, null, 2) + '\n');
   console.log(`Wrote digests.json with ${digests.length} digest(s).`);
 }
