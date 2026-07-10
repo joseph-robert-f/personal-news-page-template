@@ -7,8 +7,10 @@ import { darkLinkColor, escapeHtml, renderTemplate } from './digest.mjs';
 import { DEFAULT_CONFIG } from '../config.mjs';
 
 // JSON schema for the Messages API structured output. Structured outputs
-// require additionalProperties:false at every object level, so it is set
-// explicitly throughout.
+// require additionalProperties:false at every object level, and reject
+// array count constraints (minItems/maxItems), so limits like "5 bullets
+// max" and "at least one source" are enforced by the prompt,
+// validatePayload, and renderDigest instead of the schema.
 export const DIGEST_SCHEMA = {
   type: 'object',
   additionalProperties: false,
@@ -17,7 +19,6 @@ export const DIGEST_SCHEMA = {
     description: { type: 'string' },
     glanceBullets: {
       type: 'array',
-      maxItems: 5,
       items: { type: 'string' },
     },
     stories: {
@@ -34,7 +35,6 @@ export const DIGEST_SCHEMA = {
           detail: { type: 'string' },
           sources: {
             type: 'array',
-            minItems: 1,
             items: {
               type: 'object',
               additionalProperties: false,

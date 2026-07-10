@@ -33,7 +33,8 @@ elapsed time or actions only the maintainer can take (listed at the end).
 | 4 | Minor | `github.base_ref` interpolated directly into a `run:` line in pr-checks.yml (not exploitable — trigger is branch-restricted — but the canonical injection-sink pattern). | **Fixed**: passed via `env:`. |
 | 5 | Minor | Actions pinned to major tags, not SHAs. | **Accepted**: meets the spec's bar; SHA-pinning noted as optional hardening for a future pass. |
 | 6 | Minor | `description` and `coverageWindow` config keys undocumented in README; agent-doc repo maps missing the four newer scripts. | **Fixed**: documented. |
-| 7 | Minor | Anthropic API request shape in `generate-digest.mjs` unverifiable offline. | **Open**: confirmed on the first live AI-draft run (deferred Gate 6). |
+| 7 | Minor | Anthropic API request shape in `generate-digest.mjs` unverifiable offline. | **Confirmed real on the first live run (10 July 2026)**: the API rejected `maxItems`/`minItems` in the structured-output schema (HTTP 400) — those keywords are unsupported by structured outputs. **Fixed**: removed from `DIGEST_SCHEMA` (limits already enforced by prompt, `validatePayload`, and `renderDigest`); regression test bans all unsupported schema keywords. The failure also validated the exit-3 soft-skip path live: the placeholder draft was kept and the branch pushed as designed. |
+| 8 | Minor | Fresh-fork run (Gate 8, 10 July 2026): daily workflow's PR creation fails on new repositories — GitHub's default Actions policy blocks PR creation regardless of the workflow's `permissions` block. | **Fixed**: README Setup now includes enabling "Allow GitHub Actions to create and approve pull requests" as step 3. |
 
 ## Outstanding for sign-off (maintainer)
 
