@@ -135,3 +135,19 @@ export function buildSitemapXml(config, digests) {
     '</urlset>',
   ].join('\n') + '\n';
 }
+
+// Derive the default GitHub Pages URL from a "owner/repo" string (the shape
+// of the GITHUB_REPOSITORY env var on Actions runners). Lets the feed and
+// sitemap build with zero configuration on a standard <owner>.github.io/<repo>
+// deployment; an explicit `siteUrl` in site.config.json (custom domain, user
+// site with a path, etc.) always takes precedence in the caller.
+export function deriveSiteUrl(githubRepository) {
+  if (typeof githubRepository !== 'string') return '';
+  const m = githubRepository.match(/^([^/]+)\/([^/]+)$/);
+  if (!m) return '';
+  const [, owner, repo] = m;
+  if (repo.toLowerCase() === `${owner.toLowerCase()}.github.io`) {
+    return `https://${owner.toLowerCase()}.github.io`;
+  }
+  return `https://${owner.toLowerCase()}.github.io/${repo}`;
+}

@@ -93,7 +93,7 @@ jobs:
           fi
           AI_ENABLED="$(node scripts/generate-digest.mjs --print-enabled)"
           if [ "$AI_ENABLED" != "true" ]; then
-            echo "::notice::ai.enabled is not true in site.config.json; keeping the placeholder draft."
+            echo "::notice::AI drafts are paused (ai.enabled is false in site.config.json); keeping the placeholder draft."
             exit 0
           fi
           set +e

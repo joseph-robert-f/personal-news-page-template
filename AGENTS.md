@@ -13,8 +13,13 @@ The normal flow is:
 1. Generate a draft with `node scripts/new-digest.mjs`.
 2. Fill in the brief using `templates/digest-template.html` as the structure.
 3. Run `node scripts/build-manifest.mjs`.
-4. Open or update a draft PR.
-5. Merge only after human review.
+4. Run `node --test` and `node scripts/check-digest.mjs <file>`.
+5. Open or update a draft PR.
+6. Merge only after human review.
+
+AI-generated drafts (enabled by the `ANTHROPIC_API_KEY` Actions secret) go
+through this same PR review gate -- a human verifies the cited sources and
+merges before anything publishes.
 
 ## Content Bar
 

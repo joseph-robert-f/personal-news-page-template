@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { DEFAULT_CONFIG } from '../scripts/config.mjs';
-import { buildFeedXml, buildSitemapXml, escapeXml, localDateTimeToUtcIso } from '../scripts/lib/feed.mjs';
+import { buildFeedXml, buildSitemapXml, deriveSiteUrl, escapeXml, localDateTimeToUtcIso } from '../scripts/lib/feed.mjs';
 
 test('escapeXml escapes all five special characters, with & first', () => {
   assert.equal(escapeXml('& < > " \''), '&amp; &lt; &gt; &quot; &apos;');
@@ -104,4 +104,19 @@ test('buildSitemapXml is not capped at 30 (all digests included)', () => {
   const xml = buildSitemapXml(config, digests);
   const urlCount = (xml.match(/<url>/g) || []).length;
   assert.equal(urlCount, 42); // home + archive + 40 digests
+});
+
+test('deriveSiteUrl builds the default Pages URL from owner/repo', () => {
+  assert.equal(deriveSiteUrl('Alice/personal-news-page-template'),
+    'https://alice.github.io/personal-news-page-template');
+});
+
+test('deriveSiteUrl handles the owner.github.io user-site repo', () => {
+  assert.equal(deriveSiteUrl('Alice/Alice.github.io'), 'https://alice.github.io');
+});
+
+test('deriveSiteUrl returns empty for missing or malformed input', () => {
+  assert.equal(deriveSiteUrl(undefined), '');
+  assert.equal(deriveSiteUrl(''), '');
+  assert.equal(deriveSiteUrl('not-a-repo'), '');
 });

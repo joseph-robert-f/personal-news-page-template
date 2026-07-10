@@ -23,7 +23,10 @@ export const DEFAULT_CONFIG = Object.freeze({
   accentColor: '#2563eb',
   draftBranchPrefix: 'daily-digest',
   siteUrl: '',
-  ai: Object.freeze({ enabled: false, model: 'claude-sonnet-5', maxStories: 4, instructions: '' }),
+  // AI drafts turn on by adding the ANTHROPIC_API_KEY Actions secret -- the
+  // secret is the switch. Set `"ai": { "enabled": false }` to pause AI
+  // drafts without deleting the secret.
+  ai: Object.freeze({ enabled: true, model: 'claude-sonnet-5', maxStories: 4, instructions: '' }),
 });
 
 export async function loadSiteConfig(root) {

@@ -16,6 +16,14 @@ Opus input cost. Fork owners who want maximum quality can set the model to
 **Depends on:** Sprint 2 (digest linter validates generated output).
 **Benefits from:** Sprint 5 (reliable scheduling).
 
+> **Amended after merge (fork-UX review):** the double opt-in originally
+> specified here (`ai.enabled: true` **and** the secret) proved confusing in
+> practice. The design now treats the `ANTHROPIC_API_KEY` secret as the sole
+> switch: `ai.enabled` defaults to `true` and acts only as an optional pause.
+> Additionally, `siteUrl` (sprint 4) is now auto-derived from the repository
+> name on Actions runners, so feeds work with zero configuration on standard
+> Pages deployments.
+
 ## Goal
 
 Optionally pre-fill the daily draft PR with real, sourced content for the

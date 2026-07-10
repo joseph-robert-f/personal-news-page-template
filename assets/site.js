@@ -23,7 +23,7 @@
     accentColor: '#2563eb',
     draftBranchPrefix: 'daily-digest',
     siteUrl: '',
-    ai: { enabled: false, model: 'claude-sonnet-5', maxStories: 4, instructions: '' }
+    ai: { enabled: true, model: 'claude-sonnet-5', maxStories: 4, instructions: '' }
   };
 
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
