@@ -59,6 +59,13 @@ is optional and has a sensible default):
 
 ## Daily Routine
 
+> **Note for this template repository:** the daily schedule is dormant on the
+> template itself (it would only produce placeholder PRs). In a repository
+> created from the template, the schedule runs automatically -- each copy's
+> workflow is fully independent and uses that repository's own Actions quota
+> and secrets.
+
+
 The scheduled workflow does not publish automatically. It creates a branch like
 `daily-digest/2026-07-04`, writes a draft digest file, rebuilds `digests.json`,
 and opens a draft pull request.
