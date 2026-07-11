@@ -8,11 +8,13 @@ import { dirname, join } from 'node:path';
 import { DEFAULT_CONFIG } from '../scripts/config.mjs';
 import { checkDigest, PLACEHOLDER_STRINGS } from '../scripts/lib/check.mjs';
 import {
+  assembleStreamedMessage,
   buildPrompt,
   DIGEST_SCHEMA,
   renderDigest,
   validatePayload,
 } from '../scripts/lib/generate.mjs';
+import { generateDigest } from '../scripts/generate-digest.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEMPLATE_PATH = join(__dirname, '..', 'templates', 'digest-template.html');
@@ -208,4 +210,105 @@ test('renderDigest caps bullets at 5 and stories at config.ai.maxStories', async
   assert.equal(bulletCount, 5);
   const storyCount = (html.match(/<article\b[^>]*\bclass="[^"]*\bstory\b/gi) || []).length;
   assert.equal(storyCount, 3);
+});
+
+// --- Streaming SSE assembly (assembleStreamedMessage) ---
+
+function sse(events) {
+  return events.map((e) => `event: ${e.type}\ndata: ${JSON.stringify(e)}\n`).join('\n') + '\n';
+}
+
+test('assembleStreamedMessage folds text deltas into a non-streaming-shaped message', () => {
+  const half = JSON.stringify(goodPayload());
+  const events = [
+    { type: 'message_start', message: { content: [] } },
+    { type: 'ping' },
+    { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: half.slice(0, 40) } },
+    { type: 'ping' },
+    { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: half.slice(40) } },
+    { type: 'content_block_stop', index: 0 },
+    { type: 'message_delta', delta: { stop_reason: 'end_turn' } },
+    { type: 'message_stop' },
+  ];
+  const { message, error } = assembleStreamedMessage(sse(events));
+  assert.equal(error, null);
+  assert.equal(message.stop_reason, 'end_turn');
+  assert.equal(message.content.length, 1);
+  assert.deepEqual(JSON.parse(message.content[0].text), goodPayload());
+});
+
+test('assembleStreamedMessage ignores non-text blocks and their deltas', () => {
+  const events = [
+    { type: 'message_start', message: { content: [] } },
+    { type: 'content_block_start', index: 0, content_block: { type: 'server_tool_use', id: 't1', name: 'web_search' } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'input_json_delta', partial_json: '{"query":' } },
+    { type: 'content_block_stop', index: 0 },
+    { type: 'content_block_start', index: 1, content_block: { type: 'text', text: '' } },
+    { type: 'content_block_delta', index: 1, delta: { type: 'text_delta', text: 'result' } },
+    { type: 'content_block_stop', index: 1 },
+    { type: 'message_delta', delta: { stop_reason: 'end_turn' } },
+    { type: 'message_stop' },
+  ];
+  const { message, error } = assembleStreamedMessage(sse(events));
+  assert.equal(error, null);
+  const textBlocks = message.content.filter((b) => b.type === 'text');
+  assert.equal(textBlocks.length, 1);
+  assert.equal(textBlocks[textBlocks.length - 1].text, 'result');
+});
+
+test('assembleStreamedMessage surfaces a stream error event', () => {
+  const events = [
+    { type: 'message_start', message: { content: [] } },
+    { type: 'error', error: { type: 'overloaded_error', message: 'Overloaded' } },
+  ];
+  const { message, error } = assembleStreamedMessage(sse(events));
+  assert.equal(message, null);
+  assert.equal(error.message, 'Overloaded');
+});
+
+test('assembleStreamedMessage flags a stream that ends without message_stop', () => {
+  const events = [
+    { type: 'message_start', message: { content: [] } },
+    { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'partial' } },
+  ];
+  const { message, error } = assembleStreamedMessage(sse(events));
+  assert.equal(message, null);
+  assert.match(error.message, /message_stop/);
+});
+
+// --- generateDigest network-error handling ---
+
+function successResponse() {
+  return {
+    ok: true,
+    status: 200,
+    json: { stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify(goodPayload()) }] },
+    text: '',
+  };
+}
+
+test('generateDigest retries once after a thrown network error, then succeeds', async () => {
+  const template = await readFile(TEMPLATE_PATH, 'utf8');
+  let calls = 0;
+  const call = async () => {
+    calls += 1;
+    if (calls === 1) throw new TypeError('fetch failed');
+    return successResponse();
+  };
+  const result = await generateDigest({ config: CONFIG, template, meta: META, apiKey: 'test-key', call });
+  assert.equal(result.ok, true);
+  assert.equal(calls, 2);
+});
+
+test('generateDigest soft-fails (not crashes) when the network error persists', async () => {
+  const template = await readFile(TEMPLATE_PATH, 'utf8');
+  const err = new TypeError('fetch failed');
+  err.cause = { code: 'UND_ERR_HEADERS_TIMEOUT' };
+  const call = async () => { throw err; };
+  const result = await generateDigest({ config: CONFIG, template, meta: META, apiKey: 'test-key', call });
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /network error/);
+  assert.match(result.reason, /UND_ERR_HEADERS_TIMEOUT/);
 });

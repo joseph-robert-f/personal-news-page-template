@@ -17,7 +17,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { formatIsoDate, loadSiteConfig, MONTHS, parseIsoParts } from './config.mjs';
 import { formatWeekRange, sanitizeFilePart, todayInTimeZone } from './lib/digest.mjs';
-import { buildPrompt, DIGEST_SCHEMA, renderDigest, validatePayload } from './lib/generate.mjs';
+import { assembleStreamedMessage, buildPrompt, DIGEST_SCHEMA, renderDigest, validatePayload } from './lib/generate.mjs';
 import { checkDigest } from './lib/check.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -44,6 +44,12 @@ function parseArgs(argv) {
 }
 
 // Isolated so tests can stub the HTTP call. Returns a plain result object.
+// The request always streams: a non-streaming call sends no response headers
+// until the entire generation finishes, and Node's built-in fetch gives up
+// after 300s without headers (UND_ERR_HEADERS_TIMEOUT) — well under the
+// several minutes a web-search draft takes. Streaming delivers headers
+// immediately and keeps bytes flowing, so only the overall abort timer here
+// bounds the request.
 export async function callAnthropic(body, apiKey) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -55,13 +61,30 @@ export async function callAnthropic(body, apiKey) {
         'anthropic-version': '2023-06-01',
         'content-type': 'application/json',
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ ...body, stream: true }),
       signal: controller.signal,
     });
-    const text = await res.text();
-    let json = null;
-    try { json = JSON.parse(text); } catch { /* leave json null */ }
-    return { ok: res.ok, status: res.status, json, text };
+
+    if (!res.ok) {
+      const text = await res.text();
+      let json = null;
+      try { json = JSON.parse(text); } catch { /* leave json null */ }
+      return { ok: false, status: res.status, json, text };
+    }
+
+    let sse = '';
+    const decoder = new TextDecoder();
+    for await (const chunk of res.body) {
+      sse += decoder.decode(chunk, { stream: true });
+    }
+    sse += decoder.decode();
+
+    const { message, error } = assembleStreamedMessage(sse);
+    if (error) {
+      const text = JSON.stringify(error);
+      return { ok: false, status: res.status, json: { error }, text };
+    }
+    return { ok: true, status: res.status, json: message, text: sse };
   } finally {
     clearTimeout(timer);
   }
@@ -93,10 +116,24 @@ export async function generateDigest({ config, template, meta, apiKey, call = ca
   let notes = [];
   let maxTokensRetried = false;
   let lintRetried = false;
+  let networkRetried = false;
 
   for (let attempt = 1; attempt <= 4; attempt += 1) {
     const prompt = buildPrompt(config, meta.isoDate, meta.displayDate, { maxStories, notes });
-    const resp = await call(buildRequestBody(config, prompt), apiKey);
+
+    let resp;
+    try {
+      resp = await call(buildRequestBody(config, prompt), apiKey);
+    } catch (err) {
+      // Network-level failure (DNS, reset, abort). Retry once, then fail
+      // through the normal soft-skip contract (exit 3) instead of crashing.
+      if (!networkRetried) {
+        networkRetried = true;
+        continue;
+      }
+      const cause = err && err.cause ? ` (${err.cause.code || err.cause.message || err.cause})` : '';
+      return { ok: false, reason: `network error calling the Anthropic API: ${err.message}${cause}` };
+    }
 
     if (!resp.ok) {
       const snippet = (resp.text || '').slice(0, 300);
@@ -201,4 +238,7 @@ async function main() {
   }
 }
 
-main().catch((err) => { console.error(err); process.exit(1); });
+// Only run when executed directly, so tests can import the exports above.
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  main().catch((err) => { console.error(err); process.exit(1); });
+}
