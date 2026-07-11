@@ -138,6 +138,64 @@ export function validatePayload(payload) {
   return errors;
 }
 
+// Folds a complete SSE transcript from a streaming Messages API call into a
+// plain message object shaped like a non-streaming response ({ stop_reason,
+// content: [...] }), so downstream handling is identical either way. The
+// request streams because a non-streaming call sends no response headers
+// until the whole generation (minutes of web research) finishes, and Node's
+// built-in fetch aborts after 300s without headers (UND_ERR_HEADERS_TIMEOUT).
+// Returns { message, error } — `error` is set if the stream carried an error
+// event or ended before message_stop.
+export function assembleStreamedMessage(sseText) {
+  const message = { stop_reason: null, content: [] };
+  let sawStop = false;
+
+  for (const rawEvent of String(sseText).split('\n\n')) {
+    const dataLines = rawEvent
+      .split('\n')
+      .filter((line) => line.startsWith('data:'))
+      .map((line) => line.slice(5).trim());
+    if (!dataLines.length) continue;
+
+    let event;
+    try {
+      event = JSON.parse(dataLines.join(''));
+    } catch {
+      continue; // tolerate partial/malformed frames (e.g. a truncated tail)
+    }
+
+    switch (event.type) {
+      case 'error':
+        return { message: null, error: event.error || { message: 'unknown stream error' } };
+      case 'content_block_start':
+        message.content[event.index] = { ...event.content_block };
+        break;
+      case 'content_block_delta': {
+        const block = message.content[event.index];
+        if (block && event.delta && event.delta.type === 'text_delta' && block.type === 'text') {
+          block.text = (block.text || '') + event.delta.text;
+        }
+        break;
+      }
+      case 'message_delta':
+        if (event.delta && event.delta.stop_reason) message.stop_reason = event.delta.stop_reason;
+        break;
+      case 'message_stop':
+        sawStop = true;
+        break;
+      default:
+        break; // message_start, content_block_stop, ping, unknown future events
+    }
+  }
+
+  if (!sawStop) {
+    return { message: null, error: { message: 'stream ended before message_stop (connection dropped mid-generation)' } };
+  }
+  // Sparse indexes (shouldn't happen, but be safe) become dropped entries.
+  message.content = message.content.filter(Boolean);
+  return { message, error: null };
+}
+
 // Returns the original URL string if it parses as an http(s) URL, else null.
 function safeUrl(url) {
   if (typeof url !== 'string') return null;
