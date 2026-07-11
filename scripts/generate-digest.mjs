@@ -23,7 +23,16 @@ import { checkDigest } from './lib/check.mjs';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const TEMPLATE_PATH = join(ROOT, 'templates', 'digest-template.html');
 const API_URL = 'https://api.anthropic.com/v1/messages';
-const REQUEST_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+// Per-attempt ceiling. A real draft (multiple web searches + writing) can
+// legitimately run past 10 minutes -- a live run was aborted twice at an
+// earlier 10-minute cap while still streaming healthily. This is an
+// unattended batch job, so the cap is generous; the idle timeout below is
+// what catches genuinely dead connections quickly.
+const REQUEST_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+// Abort if the stream goes silent. A healthy generation delivers a steady
+// flow of SSE events (deltas, tool progress, pings), so a long gap means
+// the connection died, not that the model is thinking.
+const IDLE_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes
 
 function parseArgs(argv) {
   const parsed = {};
@@ -52,8 +61,20 @@ function parseArgs(argv) {
 // bounds the request.
 export async function callAnthropic(body, apiKey) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const overall = setTimeout(
+    () => controller.abort(new Error(`request exceeded the ${REQUEST_TIMEOUT_MS / 60000}-minute per-attempt cap`)),
+    REQUEST_TIMEOUT_MS,
+  );
+  let idle = null;
+  const resetIdle = () => {
+    clearTimeout(idle);
+    idle = setTimeout(
+      () => controller.abort(new Error(`stream idle for ${IDLE_TIMEOUT_MS / 60000} minutes (connection presumed dead)`)),
+      IDLE_TIMEOUT_MS,
+    );
+  };
   try {
+    resetIdle();
     const res = await fetch(API_URL, {
       method: 'POST',
       headers: {
@@ -75,6 +96,7 @@ export async function callAnthropic(body, apiKey) {
     let sse = '';
     const decoder = new TextDecoder();
     for await (const chunk of res.body) {
+      resetIdle();
       sse += decoder.decode(chunk, { stream: true });
     }
     sse += decoder.decode();
@@ -86,7 +108,8 @@ export async function callAnthropic(body, apiKey) {
     }
     return { ok: true, status: res.status, json: message, text: sse };
   } finally {
-    clearTimeout(timer);
+    clearTimeout(overall);
+    clearTimeout(idle);
   }
 }
 
@@ -94,7 +117,10 @@ export function buildRequestBody(config, prompt) {
   return {
     model: config.ai.model,
     max_tokens: 8000,
-    tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 12 }],
+    // max_uses stays below the API's ~10-iteration server-side tool loop
+    // (which would end the turn early with stop_reason: pause_turn) and
+    // keeps generation time reasonable.
+    tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 8 }],
     output_config: { format: { type: 'json_schema', schema: DIGEST_SCHEMA } },
     messages: [{ role: 'user', content: prompt }],
   };
@@ -144,6 +170,13 @@ export async function generateDigest({ config, template, meta, apiKey, call = ca
 
     if (stopReason === 'refusal') {
       return { ok: false, reason: 'model declined to generate the digest (stop_reason: refusal)' };
+    }
+
+    if (stopReason === 'pause_turn') {
+      // The server-side tool loop hit its iteration limit before finishing.
+      // max_uses is set below the limit so this should not happen; surface
+      // it clearly rather than as a confusing "no text block" error.
+      return { ok: false, reason: 'model paused mid-generation (stop_reason: pause_turn); the web search budget may be set too high relative to the API tool-loop limit' };
     }
 
     if (stopReason === 'max_tokens') {
