@@ -72,10 +72,19 @@ jobs:
       - name: Check out draft branch
         if: steps.guard.outputs.should_run == 'true'
         run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin "$DRAFT_BRANCH" || true
           if git show-ref --verify --quiet "refs/remotes/origin/$DRAFT_BRANCH"; then
             echo "DRAFT_REMOTE_EXISTS=true" >> "$GITHUB_ENV"
             git checkout -B "$DRAFT_BRANCH" "origin/$DRAFT_BRANCH"
+            # Every later step runs scripts from this working tree, and a
+            # reused draft branch may predate fixes merged to the default
+            # branch since it was pushed. Fold main in so the current code
+            # runs and the branch stays mergeable. A conflict here (rare:
+            # the same digest edited on both sides) fails the run loudly,
+            # which is the right outcome for a human to resolve.
+            git merge --no-edit origin/main
           else
             echo "DRAFT_REMOTE_EXISTS=false" >> "$GITHUB_ENV"
             git checkout -b "$DRAFT_BRANCH"
@@ -144,8 +153,20 @@ jobs:
             echo "No branch changes and no remote draft branch; skipping PR creation."
             exit 0
           fi
-          if gh pr view "$DRAFT_BRANCH" --json number --jq .number >/dev/null 2>&1; then
+          # Only an OPEN pull request blocks creating one -- gh pr view also
+          # matches the branch's merged/closed PRs (e.g. a draft for this
+          # date that was already reviewed and merged), and those must not
+          # swallow a fresh PR for new content.
+          PR_STATE="$(gh pr view "$DRAFT_BRANCH" --json state --jq .state 2>/dev/null || true)"
+          if [ "$PR_STATE" = "OPEN" ]; then
             echo "Draft pull request already exists for $DRAFT_BRANCH."
+            exit 0
+          fi
+          # Nothing to propose if the branch has no content beyond main
+          # (e.g. a fully-merged draft branch reused by a run whose
+          # generation produced no changes) -- gh pr create would fail.
+          if git diff --quiet "origin/main...HEAD"; then
+            echo "Draft branch has no changes against main; skipping PR creation."
             exit 0
           fi
           cat > pr-body.md <<'EOF'
