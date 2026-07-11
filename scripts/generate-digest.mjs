@@ -143,8 +143,9 @@ export async function generateDigest({ config, template, meta, apiKey, call = ca
   let maxTokensRetried = false;
   let lintRetried = false;
   let networkRetried = false;
+  let validationRetried = false;
 
-  for (let attempt = 1; attempt <= 4; attempt += 1) {
+  for (let attempt = 1; attempt <= 5; attempt += 1) {
     const prompt = buildPrompt(config, meta.isoDate, meta.displayDate, { maxStories, notes });
 
     let resp;
@@ -201,7 +202,15 @@ export async function generateDigest({ config, template, meta, apiKey, call = ca
 
     const payloadErrors = validatePayload(payload);
     if (payloadErrors.length) {
-      return { ok: false, reason: `response payload failed validation: ${payloadErrors.join('; ')}` };
+      // A structurally-valid response with bad content (seen live: a
+      // schema-conforming payload with an empty stories array) deserves one
+      // more attempt with the problems fed back, same as lint failures.
+      if (!validationRetried) {
+        validationRetried = true;
+        notes = [...notes, `The previous attempt returned an unusable payload (${payloadErrors.join('; ')}). Fix these problems; in particular, always include at least one story with real web-search sources.`];
+        continue;
+      }
+      return { ok: false, reason: `response payload failed validation even after a retry: ${payloadErrors.join('; ')}` };
     }
 
     const html = renderDigest(template, config, payload, meta);
