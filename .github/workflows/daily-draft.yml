@@ -51,6 +51,12 @@ jobs:
       - name: Guard
         id: guard
         run: node scripts/should-run-now.mjs ${{ github.event_name == 'workflow_dispatch' && '--force' || '' }}
+      - name: Resolve publish mode
+        if: steps.guard.outputs.should_run == 'true'
+        run: |
+          PUBLISH_MODE="$(node --input-type=module -e "import { loadSiteConfig } from './scripts/config.mjs'; const c = await loadSiteConfig(process.cwd()); console.log(c.publishMode);")"
+          echo "PUBLISH_MODE=$PUBLISH_MODE" >> "$GITHUB_ENV"
+          echo "Publish mode: $PUBLISH_MODE"
       - name: Resolve draft date and branch
         if: steps.guard.outputs.should_run == 'true'
         run: |
@@ -70,7 +76,7 @@ jobs:
           echo "DRAFT_BRANCH=$DRAFT_BRANCH" >> "$GITHUB_ENV"
           echo "DRAFT_PATH=$DRAFT_PATH" >> "$GITHUB_ENV"
       - name: Check out draft branch
-        if: steps.guard.outputs.should_run == 'true'
+        if: steps.guard.outputs.should_run == 'true' && env.PUBLISH_MODE != 'auto'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -90,18 +96,26 @@ jobs:
             git checkout -b "$DRAFT_BRANCH"
           fi
       - name: Create draft digest
-        if: steps.guard.outputs.should_run == 'true'
+        if: steps.guard.outputs.should_run == 'true' && env.PUBLISH_MODE != 'auto'
         run: |
           node scripts/new-digest.mjs --date "$DIGEST_DATE"
           node scripts/build-manifest.mjs
       - name: Generate AI draft (optional)
         id: ai
-        if: steps.guard.outputs.should_run == 'true'
+        if: steps.guard.outputs.should_run == 'true' && env.PUBLISH_MODE != 'auto'
         env:
           # The API key is scoped to this single step only, so it never leaks
           # into other steps' environments or logs.
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
+          # Scheduled firings are idempotent creators: with the guard's wide
+          # catch-up window both daily firings can proceed, so the second one
+          # must not regenerate (and re-bill) a draft that already exists.
+          # Manual runs (workflow_dispatch) always regenerate on purpose.
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "$DRAFT_REMOTE_EXISTS" = "true" ] && ! git diff --quiet "origin/main...HEAD"; then
+            echo "::notice::A draft for $DIGEST_DATE already exists on $DRAFT_BRANCH; this scheduled firing leaves it untouched."
+            exit 0
+          fi
           if [ -z "$ANTHROPIC_API_KEY" ]; then
             echo "::notice::ANTHROPIC_API_KEY is not set; keeping the placeholder draft."
             exit 0
@@ -133,7 +147,7 @@ jobs:
               ;;
           esac
       - name: Commit draft if needed
-        if: steps.guard.outputs.should_run == 'true'
+        if: steps.guard.outputs.should_run == 'true' && env.PUBLISH_MODE != 'auto'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -147,7 +161,7 @@ jobs:
           git push --set-upstream origin "$DRAFT_BRANCH"
           echo "DRAFT_HAS_CHANGES=true" >> "$GITHUB_ENV"
       - name: Open draft pull request
-        if: steps.guard.outputs.should_run == 'true'
+        if: steps.guard.outputs.should_run == 'true' && env.PUBLISH_MODE != 'auto'
         run: |
           if [ "$DRAFT_HAS_CHANGES" != "true" ] && [ "$DRAFT_REMOTE_EXISTS" != "true" ]; then
             echo "No branch changes and no remote draft branch; skipping PR creation."
@@ -189,3 +203,48 @@ jobs:
             --draft \
             --title "$PR_TITLE" \
             --body-file pr-body.md
+      - name: Generate and publish directly (auto mode)
+        if: steps.guard.outputs.should_run == 'true' && env.PUBLISH_MODE == 'auto'
+        env:
+          # The API key is scoped to this single step only.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          # Auto mode publishes straight to main, but ONLY a generation that
+          # fully succeeded (schema-valid payload, content linter clean --
+          # generate-digest enforces both). Any failure publishes nothing:
+          # the placeholder never goes live, and the guard's catch-up window
+          # means a later scheduled firing retries (the file-exists check
+          # below makes retries a no-op once the digest is published).
+          # Manual runs regenerate on purpose, even if today's digest exists.
+          if [ "${{ github.event_name }}" = "schedule" ] && [ -e "$DRAFT_PATH" ]; then
+            echo "::notice::Digest for $DIGEST_DATE is already published; this scheduled firing leaves it untouched."
+            exit 0
+          fi
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::warning::publishMode is 'auto' but ANTHROPIC_API_KEY is not set; auto mode has nothing to publish. Add the secret or switch publishMode back to 'review'."
+            exit 0
+          fi
+          AI_ENABLED="$(node scripts/generate-digest.mjs --print-enabled)"
+          if [ "$AI_ENABLED" != "true" ]; then
+            echo "::notice::AI drafts are paused (ai.enabled is false in site.config.json); nothing published."
+            exit 0
+          fi
+          set +e
+          node scripts/generate-digest.mjs --date "$DIGEST_DATE"
+          CODE=$?
+          set -e
+          if [ "$CODE" != "0" ]; then
+            echo "::warning::AI generation failed (exit $CODE); nothing published for $DIGEST_DATE. A delayed scheduled firing today will retry."
+            exit 0
+          fi
+          node scripts/build-manifest.mjs
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$DRAFT_PATH" digests.json
+          if git diff --cached --quiet; then
+            echo "::notice::Generated digest is identical to what is already published; nothing to do."
+            exit 0
+          fi
+          git commit -m "Publish news digest for $DIGEST_DATE (auto)"
+          # Tolerate a racing push to main (rare): rebase once and retry.
+          git push origin HEAD:main || (git pull --rebase origin main && git push origin HEAD:main)

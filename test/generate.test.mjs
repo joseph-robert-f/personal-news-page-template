@@ -312,3 +312,55 @@ test('generateDigest soft-fails (not crashes) when the network error persists', 
   assert.match(result.reason, /network error/);
   assert.match(result.reason, /UND_ERR_HEADERS_TIMEOUT/);
 });
+
+test('generateDigest retries once with feedback when the payload fails validation', async () => {
+  const template = await readFile(TEMPLATE_PATH, 'utf8');
+  const empty = { ...goodPayload(), stories: [] };
+  const prompts = [];
+  let calls = 0;
+  const call = async (body) => {
+    calls += 1;
+    prompts.push(body.messages[0].content);
+    return {
+      ok: true,
+      status: 200,
+      json: {
+        stop_reason: 'end_turn',
+        content: [{ type: 'text', text: JSON.stringify(calls === 1 ? empty : goodPayload()) }],
+      },
+      text: '',
+    };
+  };
+  const result = await generateDigest({ config: CONFIG, template, meta: META, apiKey: 'test-key', call });
+  assert.equal(result.ok, true);
+  assert.equal(calls, 2);
+  // The retry prompt carries the validation feedback.
+  assert.match(prompts[1], /unusable payload/);
+  assert.match(prompts[1], /stories must be a non-empty array/);
+});
+
+test('generateDigest fails cleanly when validation errors persist after the retry', async () => {
+  const template = await readFile(TEMPLATE_PATH, 'utf8');
+  const empty = { ...goodPayload(), stories: [] };
+  const call = async () => ({
+    ok: true,
+    status: 200,
+    json: { stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify(empty) }] },
+    text: '',
+  });
+  const result = await generateDigest({ config: CONFIG, template, meta: META, apiKey: 'test-key', call });
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /failed validation even after a retry/);
+});
+
+test('buildPrompt forbids an empty stories array', () => {
+  const prompt = buildPrompt(CONFIG, META.isoDate, META.displayDate);
+  assert.match(prompt, /at least one story/i);
+  assert.match(prompt, /Never return an empty stories array/);
+});
+
+test('buildPrompt demands article-level source URLs', () => {
+  const prompt = buildPrompt(CONFIG, META.isoDate, META.displayDate);
+  assert.match(prompt, /specific article, document, or record/);
+  assert.match(prompt, /never a homepage or section front/);
+});

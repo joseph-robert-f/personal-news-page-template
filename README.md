@@ -131,6 +131,31 @@ If generation fails for any reason (missing key, API error, model refusal, or
 the output failing `check-digest.mjs` after a retry), the workflow logs a
 warning and falls back to the placeholder draft — the daily PR always opens.
 
+### Auto-publish (optional, hands-off mode)
+
+If you don't want to merge a PR every day, set one key in `site.config.json`:
+
+```json
+"publishMode": "auto"
+```
+
+In auto mode the daily workflow generates the digest and, **only if
+generation fully succeeds** — schema-valid payload, every story sourced, and
+a clean pass through the content linter — commits it straight to `main`,
+which deploys it. There is no PR and no human step.
+
+What you give up is source verification: nobody confirms the cited links
+actually support the claims before they publish. The automated gates still
+stand (structure validation, HTML escaping, `javascript:`/`data:` URLs
+dropped, sourceless stories dropped, linter must pass), and a failed
+generation publishes **nothing** — the placeholder never goes live in auto
+mode; a delayed scheduled firing the same morning retries automatically.
+
+`"publishMode": "review"` (the default) restores the PR gate at any time.
+A sensible middle path: run in review mode for the first week or two while
+you calibrate `ai.instructions`, then switch to auto once you trust the
+output — and spot-check the site now and then.
+
 ## Local Commands
 
 Validate your config:

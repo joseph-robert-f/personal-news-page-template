@@ -23,6 +23,12 @@ export const DEFAULT_CONFIG = Object.freeze({
   accentColor: '#2563eb',
   draftBranchPrefix: 'daily-digest',
   siteUrl: '',
+  // 'review' (default): each daily draft opens a PR and publishes only when
+  // a human merges it. 'auto': a generated digest that passes payload
+  // validation and the content linter is committed straight to main and
+  // deploys with no human source review; a failed generation publishes
+  // nothing (the placeholder never goes live in auto mode).
+  publishMode: 'review',
   // AI drafts turn on by adding the ANTHROPIC_API_KEY Actions secret -- the
   // secret is the switch. Set `"ai": { "enabled": false }` to pause AI
   // drafts without deleting the secret.
@@ -132,6 +138,10 @@ export function validateSiteConfig(config) {
     else if (!/^(#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?([0-9a-fA-F]{2})?|[a-zA-Z0-9()\s,.%-]+)$/.test(accentColor)) {
       errors.push('accentColor must be a hex color (#rgb, #rrggbb, #rrggbbaa) or a valid CSS color keyword/function');
     }
+  }
+
+  if (config.publishMode !== 'review' && config.publishMode !== 'auto') {
+    errors.push("publishMode must be 'review' or 'auto'");
   }
 
   if (config.ai !== undefined) {

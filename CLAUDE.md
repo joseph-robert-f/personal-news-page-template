@@ -10,6 +10,13 @@ news content directly to `main`. AI-generated drafts (the optional `ai.*`
 config keys) go through this same PR review gate — a human must verify the
 cited sources and merge before anything publishes.
 
+One deliberate exception exists: an instance owner may set
+`"publishMode": "auto"` in site.config.json, which lets the daily workflow
+commit a *fully successful* generation (schema-valid, sourced, linter-clean)
+straight to `main` with no human review. That is an explicit per-instance
+opt-in; the template default is `"review"`, and nothing else — agents
+included — may bypass the PR gate.
+
 The normal flow is:
 
 1. Generate a draft with `node scripts/new-digest.mjs`.

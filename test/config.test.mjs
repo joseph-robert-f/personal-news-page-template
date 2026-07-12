@@ -189,3 +189,12 @@ test('loadSiteConfig leaves a siteUrl with no trailing slash untouched', async (
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test('validateSiteConfig accepts both publish modes and rejects anything else', () => {
+  assert.deepEqual(validateSiteConfig({ ...DEFAULT_CONFIG, publishMode: 'review' }), []);
+  assert.deepEqual(validateSiteConfig({ ...DEFAULT_CONFIG, publishMode: 'auto' }), []);
+  for (const bad of ['yes', '', 'AUTO', 42, null, undefined]) {
+    const errors = validateSiteConfig({ ...DEFAULT_CONFIG, publishMode: bad });
+    assert.ok(errors.some((e) => e.includes('publishMode')), `publishMode=${String(bad)} should be rejected`);
+  }
+});

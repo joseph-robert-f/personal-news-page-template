@@ -9,6 +9,7 @@ import {
   parseCronLines,
   suggestCronLines,
   utcMinutesForLocalTime,
+  withinCatchupWindow,
   withinWindow,
 } from '../scripts/lib/schedule.mjs';
 
@@ -163,4 +164,31 @@ test('should-run-now decision: within window at the EDT firing', () => {
 test('should-run-now decision: outside the window at the "wrong" EDT-time firing in summer', () => {
   // 11:30 UTC in July is 07:30 EDT, an hour past the 06:30 target.
   assert.equal(decide(nyConfig, '2026-07-15T11:30:00Z'), false);
+});
+
+// --- withinCatchupWindow ---------------------------------------------------
+
+test('withinCatchupWindow accepts on-time, early, and delayed firings', () => {
+  // target 06:30 local = 390 minutes
+  assert.equal(withinCatchupWindow(390, 390, 35, 240), true);  // exactly on time
+  assert.equal(withinCatchupWindow(380, 390, 35, 240), true);  // 10 min early
+  assert.equal(withinCatchupWindow(355, 390, 35, 240), true);  // 35 min early (boundary)
+  assert.equal(withinCatchupWindow(457, 390, 35, 240), true);  // 67 min late (observed live)
+  assert.equal(withinCatchupWindow(492, 390, 35, 240), true);  // 102 min late (observed live)
+  assert.equal(withinCatchupWindow(630, 390, 35, 240), true);  // 240 min late (boundary)
+});
+
+test('withinCatchupWindow rejects too-early and too-late firings', () => {
+  assert.equal(withinCatchupWindow(354, 390, 35, 240), false); // 36 min early
+  assert.equal(withinCatchupWindow(631, 390, 35, 240), false); // 241 min late
+  assert.equal(withinCatchupWindow(1000, 390, 35, 240), false); // hours away
+});
+
+test('withinCatchupWindow wraps around midnight', () => {
+  // target 00:10; firing at 23:50 the previous evening is 20 min early
+  assert.equal(withinCatchupWindow(1430, 10, 35, 240), true);
+  // target 23:50; firing at 01:00 is 70 min late (wraps forward)
+  assert.equal(withinCatchupWindow(60, 1430, 35, 240), true);
+  // target 23:50; firing at 05:00 is 310 min late
+  assert.equal(withinCatchupWindow(300, 1430, 35, 240), false);
 });

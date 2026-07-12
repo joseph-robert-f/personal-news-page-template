@@ -23,6 +23,7 @@
     accentColor: '#2563eb',
     draftBranchPrefix: 'daily-digest',
     siteUrl: '',
+    publishMode: 'review',
     ai: { enabled: true, model: 'claude-sonnet-5', maxStories: 4, instructions: '' }
   };
 

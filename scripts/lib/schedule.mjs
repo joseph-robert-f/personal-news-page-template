@@ -37,6 +37,21 @@ export function withinWindow(nowMinutes, targetMinutes, toleranceMinutes) {
   return wrapped <= toleranceMinutes;
 }
 
+// Asymmetric variant for the daily-draft guard. GitHub cron firings are
+// routinely delayed well past their slot (60-120 minutes observed live on a
+// busy :30 slot), so a symmetric +/-35m window can miss BOTH daily firings
+// and silently skip the day's draft. The guard therefore accepts a firing
+// from `earlyMinutes` before the target up to `lateMinutes` after it (a
+// catch-up horizon), on the same 1440-minute circle. Duplicate work from
+// two proceeding firings is prevented by the workflow itself: a scheduled
+// run that finds today's draft already on the branch leaves it untouched.
+export function withinCatchupWindow(nowMinutes, targetMinutes, earlyMinutes, lateMinutes) {
+  const after = (((nowMinutes - targetMinutes) % MINUTES_PER_DAY) + MINUTES_PER_DAY) % MINUTES_PER_DAY;
+  if (after <= lateMinutes) return true;
+  const before = MINUTES_PER_DAY - after;
+  return before <= earlyMinutes;
+}
+
 // Returns the UTC minutes-since-midnight (0-1439) that wall-clock `timeHHMM`
 // in `timezone` maps to on `dateIso` (YYYY-MM-DD). Built on sprint 4's
 // localDateTimeToUtcIso, which already resolves DST correctly via a two-pass
