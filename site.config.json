@@ -10,5 +10,6 @@
   "publishTimeLocal": "06:30",
   "accentColor": "#2563eb",
   "draftBranchPrefix": "daily-digest",
-  "siteUrl": ""
+  "siteUrl": "",
+  "publishMode": "review"
 }

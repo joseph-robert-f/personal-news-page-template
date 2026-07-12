@@ -8,6 +8,13 @@ brief. Keep the site dependency-free unless a change clearly requires otherwise.
 Daily drafts should go through pull requests. Do not auto-publish generated
 news content directly to `main`.
 
+One deliberate exception exists: an instance owner may set
+`"publishMode": "auto"` in site.config.json, which lets the daily workflow
+commit a *fully successful* generation (schema-valid, sourced, linter-clean)
+straight to `main` with no human review. That is an explicit per-instance
+opt-in; the template default is `"review"`, and nothing else — agents
+included — may bypass the PR gate.
+
 The normal flow is:
 
 1. Generate a draft with `node scripts/new-digest.mjs`.
