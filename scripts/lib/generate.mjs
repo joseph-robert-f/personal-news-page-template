@@ -68,6 +68,7 @@ export function buildPrompt(config, isoDate, displayDate, options = {}) {
     '- Provide at most 5 "at a glance" bullets, each a single tight sentence.',
     '- Lead every story with why it matters for the audience.',
     '- Every story must carry at least one source with a real http(s) URL.',
+    '- Source URLs must point to the specific article, document, or record that supports the claim — never a homepage or section front — whenever such a URL exists in your search results.',
     '- Prefer primary and authoritative sources.',
     '- Always include at least one story. Never return an empty stories array: if the coverage window was quiet, widen to the most recent notable developments and say in "when" that they are slightly older.',
     'Return the result as structured JSON matching the provided schema: a one-sentence "description" (used as the page meta description), the "glanceBullets", and the "stories" (each with category, when, headline, whyItMatters, detail, and sources[{title, url}]).',

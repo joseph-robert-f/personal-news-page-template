@@ -358,3 +358,9 @@ test('buildPrompt forbids an empty stories array', () => {
   assert.match(prompt, /at least one story/i);
   assert.match(prompt, /Never return an empty stories array/);
 });
+
+test('buildPrompt demands article-level source URLs', () => {
+  const prompt = buildPrompt(CONFIG, META.isoDate, META.displayDate);
+  assert.match(prompt, /specific article, document, or record/);
+  assert.match(prompt, /never a homepage or section front/);
+});
