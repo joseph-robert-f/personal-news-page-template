@@ -102,6 +102,14 @@ jobs:
           # into other steps' environments or logs.
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
+          # Scheduled firings are idempotent creators: with the guard's wide
+          # catch-up window both daily firings can proceed, so the second one
+          # must not regenerate (and re-bill) a draft that already exists.
+          # Manual runs (workflow_dispatch) always regenerate on purpose.
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "$DRAFT_REMOTE_EXISTS" = "true" ] && ! git diff --quiet "origin/main...HEAD"; then
+            echo "::notice::A draft for $DIGEST_DATE already exists on $DRAFT_BRANCH; this scheduled firing leaves it untouched."
+            exit 0
+          fi
           if [ -z "$ANTHROPIC_API_KEY" ]; then
             echo "::notice::ANTHROPIC_API_KEY is not set; keeping the placeholder draft."
             exit 0

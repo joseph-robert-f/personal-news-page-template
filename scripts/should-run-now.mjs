@@ -18,10 +18,16 @@ import { appendFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadSiteConfig } from './config.mjs';
-import { localMinutesOfDay, withinWindow } from './lib/schedule.mjs';
+import { localMinutesOfDay, withinCatchupWindow } from './lib/schedule.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const TOLERANCE_MINUTES = 35;
+// GitHub cron firings routinely run 60-120 minutes late on busy slots (both
+// of a real instance's daily firings were once delayed past a +/-35m window,
+// silently skipping the day's draft). Accept up to 35 minutes early and up
+// to 4 hours late (catch-up); the workflow itself makes a second proceeding
+// firing a no-op when today's draft already exists on the branch.
+const EARLY_TOLERANCE_MINUTES = 35;
+const LATE_TOLERANCE_MINUTES = 240;
 
 const args = parseArgs(process.argv.slice(2));
 const config = await loadSiteConfig(ROOT);
@@ -42,8 +48,8 @@ if (args.force) {
     process.exit(1);
   }
   const nowMinutes = localMinutesOfDay(config.timezone, now);
-  shouldRun = withinWindow(nowMinutes, targetMinutes, TOLERANCE_MINUTES);
-  reason = `now=${formatMinutes(nowMinutes)} target=${formatMinutes(targetMinutes)} timezone=${config.timezone} tolerance=${TOLERANCE_MINUTES}m`;
+  shouldRun = withinCatchupWindow(nowMinutes, targetMinutes, EARLY_TOLERANCE_MINUTES, LATE_TOLERANCE_MINUTES);
+  reason = `now=${formatMinutes(nowMinutes)} target=${formatMinutes(targetMinutes)} timezone=${config.timezone} window=-${EARLY_TOLERANCE_MINUTES}m/+${LATE_TOLERANCE_MINUTES}m`;
 }
 
 console.log(`should_run=${shouldRun} (${reason})`);
