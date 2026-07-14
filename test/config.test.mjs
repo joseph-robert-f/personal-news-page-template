@@ -198,3 +198,13 @@ test('validateSiteConfig accepts both publish modes and rejects anything else', 
     assert.ok(errors.some((e) => e.includes('publishMode')), `publishMode=${String(bad)} should be rejected`);
   }
 });
+
+test('validateSiteConfig enforces ai.effort values', () => {
+  for (const good of ['low', 'medium', 'high']) {
+    assert.deepEqual(validateSiteConfig({ ...DEFAULT_CONFIG, ai: { ...DEFAULT_CONFIG.ai, effort: good } }), []);
+  }
+  for (const bad of ['max', 'xhigh', '', undefined, 3]) {
+    const errors = validateSiteConfig({ ...DEFAULT_CONFIG, ai: { ...DEFAULT_CONFIG.ai, effort: bad } });
+    assert.ok(errors.some((e) => e.includes('ai.effort')), `effort=${String(bad)} should be rejected`);
+  }
+});

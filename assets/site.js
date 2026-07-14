@@ -24,7 +24,7 @@
     draftBranchPrefix: 'daily-digest',
     siteUrl: '',
     publishMode: 'review',
-    ai: { enabled: true, model: 'claude-sonnet-5', maxStories: 4, instructions: '' }
+    ai: { enabled: true, model: 'claude-sonnet-5', maxStories: 4, effort: 'medium', instructions: '' }
   };
 
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',

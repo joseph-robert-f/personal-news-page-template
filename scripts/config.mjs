@@ -32,7 +32,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   // AI drafts turn on by adding the ANTHROPIC_API_KEY Actions secret -- the
   // secret is the switch. Set `"ai": { "enabled": false }` to pause AI
   // drafts without deleting the secret.
-  ai: Object.freeze({ enabled: true, model: 'claude-sonnet-5', maxStories: 4, instructions: '' }),
+  ai: Object.freeze({ enabled: true, model: 'claude-sonnet-5', maxStories: 4, effort: 'medium', instructions: '' }),
 });
 
 export async function loadSiteConfig(root) {
@@ -159,6 +159,9 @@ export function validateSiteConfig(config) {
       }
       if (!Number.isInteger(ai.maxStories) || ai.maxStories < 1 || ai.maxStories > 8) {
         errors.push('ai.maxStories must be an integer between 1 and 8');
+      }
+      if (!['low', 'medium', 'high'].includes(ai.effort)) {
+        errors.push("ai.effort must be 'low', 'medium', or 'high'");
       }
       if (typeof ai.instructions !== 'string') {
         errors.push('ai.instructions must be a string');

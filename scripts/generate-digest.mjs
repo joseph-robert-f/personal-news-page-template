@@ -118,10 +118,14 @@ export function buildRequestBody(config, prompt) {
     model: config.ai.model,
     max_tokens: 8000,
     // max_uses stays below the API's ~10-iteration server-side tool loop
-    // (which would end the turn early with stop_reason: pause_turn) and
-    // keeps generation time reasonable.
-    tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 8 }],
-    output_config: { format: { type: 'json_schema', schema: DIGEST_SCHEMA } },
+    // (which would end the turn early with stop_reason: pause_turn) and is
+    // the second-biggest cost lever: every search's results are re-processed
+    // as input tokens on each later loop iteration.
+    tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 6 }],
+    // effort caps adaptive-thinking spend across the server-side search loop
+    // -- the dominant cost lever; Sonnet 5 defaults to 'high', which a daily
+    // news brief does not need.
+    output_config: { effort: config.ai.effort, format: { type: 'json_schema', schema: DIGEST_SCHEMA } },
     messages: [{ role: 'user', content: prompt }],
   };
 }

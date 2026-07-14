@@ -115,12 +115,24 @@ optional; defaults shown):
 | `ai.enabled` | `true` | Set to `false` to pause AI drafts without deleting the secret. |
 | `ai.model` | `"claude-sonnet-5"` | Model used for generation. Set to `"claude-opus-4-8"` for maximum quality at higher cost. |
 | `ai.maxStories` | `4` | Maximum number of story cards (1-8). |
+| `ai.effort` | `"medium"` | Thinking depth: `"low"`, `"medium"`, or `"high"`. The dominant cost lever -- see Cost below. |
 | `ai.instructions` | `""` | Free-text steering appended to the prompt, e.g. `"Skip celebrity news; prefer primary sources."` |
 
 A partial override such as `"ai": { "enabled": true }` keeps the other defaults.
 
-**Cost:** a single daily run on Sonnet 5 with web search typically costs on the
-order of a few cents. Opus is several times more per run.
+**Cost:** budget **roughly $0.50-$2.00 per daily generation** on Sonnet 5 --
+measured from real runs, not the per-token sticker price. The searches
+themselves are cheap (about a cent each); the real cost is that every
+search's results are re-processed as input tokens on each iteration of the
+model's research loop, plus adaptive-thinking tokens billed at output rates
+throughout. The template defaults are tuned for this (`ai.effort: "medium"`,
+6 web searches); expect the low end of that range with them, and reduce
+further with `ai.effort: "low"` and a smaller `ai.maxStories`. `"high"`
+effort or Opus-class models can multiply the cost. Two more things that
+protect your balance: failed or aborted generations still bill for the work
+the API already did (the retry logic is deliberately conservative -- one
+retry per failure class), and it is worth setting a spend alert in the
+Anthropic Console so an empty balance never silently stops your mornings.
 
 **Review obligation:** generated drafts can misattribute or hallucinate sources.
 The draft PR includes a checklist item to **verify every AI-cited source link
