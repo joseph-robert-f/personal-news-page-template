@@ -177,6 +177,32 @@ open the draft PR, log a notice."
   one person's instance was ported to the template the same hour, so every
   future fork starts past these lessons.
 
+## 10. LLM cost lives in the loop, not the price sheet (added 14 July 2026)
+
+**What happened:** $20 of API credit lasted four days. Two causes: the
+shakedown's timeout bugs paid for ~6–8 complete generations whose responses
+were discarded client-side — the API bills for work already done, so an
+aborted request costs the same as a kept one — and each generation costs
+**dollars, not cents**. The per-token price sheet misleads: web-search
+results are re-injected as input tokens on *every iteration* of the
+server-side research loop, and Sonnet 5's adaptive thinking defaults to
+effort `high`, billed at output rates throughout the loop.
+
+**Lessons:**
+- Estimate agentic-loop cost as (context × iterations), not (prompt +
+  response). A 6-search research turn can process hundreds of thousands of
+  input tokens before writing a word.
+- `effort` is the dominant cost lever on thinking models — a daily news
+  brief does not need `high`. The template now defaults `ai.effort` to
+  `medium` and caps searches at 6.
+- Client-side aborts are not refunds. Timeout and retry policy is *spend*
+  policy: every retry class doubles the worst-case bill, which is why each
+  failure class gets exactly one retry.
+- Document measured costs, not theoretical ones — the README's original "a
+  few cents per run" claim was wrong by ~50×. And set a spend alert in the
+  provider console: the failure mode of an empty balance is a silently
+  missing morning edition.
+
 ---
 
 *Add new entries above this line with a date and the run or incident that
