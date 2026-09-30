@@ -1,6 +1,6 @@
 # Gate Review — Post-Sprint Release Readiness
 
-**Status:** Executed 10 July 2026 — verdict GO, conditional. Results and findings in [gate-review-results.md](gate-review-results.md); fixes shipped in [#7](https://github.com/joseph-robert-f/personal-news-page-template/pull/7)–[#12](https://github.com/joseph-robert-f/personal-news-page-template/pull/12). Gates 5 (live scheduling) and 8 (fresh-fork re-run) still open.
+**Status:** Executed 10 July 2026 — verdict GO, conditional. Results and findings in [gate-review-results.md](gate-review-results.md); fixes shipped in [#7](https://github.com/joseph-robert-f/personal-news-page-template/pull/7)–[#12](https://github.com/joseph-robert-f/personal-news-page-template/pull/12). Gate 5's live check moves to the first real repository created from the template (#13); Gate 8 (fresh-fork re-run) still open.
 
 **When to run:** After all six sprints have merged to `main` and at least one
 scheduled daily-draft cycle has completed.

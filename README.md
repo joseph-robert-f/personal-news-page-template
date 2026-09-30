@@ -8,8 +8,9 @@ optionally pre-fill each draft with sourced stories.
 [![Deploy](https://github.com/joseph-robert-f/personal-news-page-template/actions/workflows/build.yml/badge.svg)](https://github.com/joseph-robert-f/personal-news-page-template/actions/workflows/build.yml)
 [![PR checks](https://github.com/joseph-robert-f/personal-news-page-template/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/joseph-robert-f/personal-news-page-template/actions/workflows/pr-checks.yml)
 
-**Example instance:** [Northampton County, PA daily brief](https://joseph-robert-f.github.io/Northampton-County-News-/)
--- a real site built from this template.
+**Example instance (July 2026 snapshot):** [Northampton County, PA daily brief](https://joseph-robert-f.github.io/Northampton-County-News-/)
+-- a real site built from this template during its first live test. It no
+longer publishes new digests.
 
 ![A daily digest in light and dark mode: five "at a glance" bullets, then story cards that lead with why each story matters](docs/assets/digest-light-dark.png)
 
