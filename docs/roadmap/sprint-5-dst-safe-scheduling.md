@@ -1,6 +1,6 @@
 # Sprint 5 — DST-Safe Scheduling (Major)
 
-**Status:** Shipped in [#1](https://github.com/joseph-robert-f/personal-news-page-template/pull/1) — 10 July 2026. Guard window widened for GitHub cron delays, and scheduled runs made idempotent, in [#12](https://github.com/joseph-robert-f/personal-news-page-template/pull/12) (12 July 2026). Live DST check (gate 5) still open.
+**Status:** Shipped in [#1](https://github.com/joseph-robert-f/personal-news-page-template/pull/1) — 10 July 2026. Guard window widened for GitHub cron delays, and scheduled runs made idempotent, in [#12](https://github.com/joseph-robert-f/personal-news-page-template/pull/12) (12 July 2026). Live DST check (gate 5) moves to the first real repository created from the template, since the template's own schedule is dormant (#13).
 
 **Size:** Major-adjacent (½–1 day, but subtle)
 **Suggested model:** Claude Sonnet 5 (`claude-sonnet-5`)
