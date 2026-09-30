@@ -1,5 +1,7 @@
 # Sprint 3 — UI Polish & Front-End Consolidation
 
+**Status:** Shipped in [#1](https://github.com/joseph-robert-f/personal-news-page-template/pull/1) — 10 July 2026. Contrast and heading fixes from the gate review shipped in [#7](https://github.com/joseph-robert-f/personal-news-page-template/pull/7).
+
 **Size:** Small/medium (1 day)
 **Suggested model:** Claude Sonnet 5 (`claude-sonnet-5`)
 **Rationale for model:** Coordinated CSS/JS changes across three pages plus a
