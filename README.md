@@ -1,8 +1,9 @@
 # Personal News Page Template
 
 A zero-dependency GitHub Pages site that publishes a sourced daily news brief
-on any topic you choose -- drafted by Claude with web search, gated by a pull
-request you review, and deployed by GitHub Actions.
+on any topic you choose -- gated by a pull request you review and deployed
+by GitHub Actions. No API key or paid service is needed; Claude can
+optionally pre-fill each draft with sourced stories.
 
 [![Deploy](https://github.com/joseph-robert-f/personal-news-page-template/actions/workflows/build.yml/badge.svg)](https://github.com/joseph-robert-f/personal-news-page-template/actions/workflows/build.yml)
 [![PR checks](https://github.com/joseph-robert-f/personal-news-page-template/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/joseph-robert-f/personal-news-page-template/actions/workflows/pr-checks.yml)
@@ -91,20 +92,24 @@ Three steps get a working site:
    requests".
 
 That's it -- the site deploys, and the daily workflow starts opening draft
-PRs on schedule. Everything below is optional tuning.
+PRs on schedule. No API key is needed: each draft is a placeholder that you
+fill in, then merge. Everything below is optional.
 
-**Have Claude write your drafts (recommended):** add one repository secret
-named `ANTHROPIC_API_KEY` (**Settings -> Secrets and variables -> Actions**)
-with an API key from [console.anthropic.com](https://console.anthropic.com/).
-The secret is the switch -- with it set, each daily draft arrives pre-filled
-with real, sourced stories for you to review; without it, drafts are
-placeholders you fill in by hand. See [AI Drafts](#ai-drafts-optional).
+**Optional add-on -- have Claude write the drafts:** add one repository
+secret named `ANTHROPIC_API_KEY` (**Settings -> Secrets and variables ->
+Actions**) with an API key from
+[console.anthropic.com](https://console.anthropic.com/). The secret is the
+switch -- with it set, each daily draft arrives pre-filled with sourced
+stories for you to review; without it, nothing changes. This is a paid API
+(roughly $0.50-$2.00 per daily draft); see [AI Drafts](#ai-drafts-optional)
+before you turn it on.
 
 **Make it yours** by editing `site.config.json` (a plain JSON file; every key
 is optional and has a sensible default):
 
-- `topic` / `audience`: what the brief tracks and who it's for. These two
-  steer everything the AI writes -- set them first.
+- `topic` / `audience`: what the brief tracks and who it's for. They fill in
+  the placeholder draft and the digest footer and, if you use AI drafts,
+  steer everything Claude writes.
 - `siteTitle`, `digestTitlePrefix`, `eyebrow`: naming and branding.
 - `timezone` and `publishTimeLocal`: when the daily draft is created. If you
   move these far from the default (06:30 US Eastern), CI will tell you the
@@ -215,6 +220,10 @@ In auto mode the daily workflow generates the digest and, **only if
 generation fully succeeds** — schema-valid payload, every story sourced, and
 a clean pass through the content linter — commits it straight to `main`,
 which deploys it. There is no PR and no human step.
+
+Auto mode needs the `ANTHROPIC_API_KEY` secret and API credit. Without
+them there is nothing to publish, so the site silently stops updating --
+use review mode if you don't want a paid API in the loop.
 
 What you give up is source verification: nobody confirms the cited links
 actually support the claims before they publish. The automated gates still
