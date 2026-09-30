@@ -9,7 +9,7 @@ optionally pre-fill each draft with sourced stories.
 [![PR checks](https://github.com/joseph-robert-f/personal-news-page-template/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/joseph-robert-f/personal-news-page-template/actions/workflows/pr-checks.yml)
 
 **Example:** a real digest from the template's first live test (13 July
-2026, a Northampton County, PA brief drafted by Claude and reviewed by hand).
+2026, a Northampton County, PA brief drafted by Claude).
 
 ![A daily digest in light and dark mode: five "at a glance" bullets, then story cards that lead with why each story matters](docs/assets/digest-light-dark.png)
 
