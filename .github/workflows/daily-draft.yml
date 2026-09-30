@@ -26,6 +26,8 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  # Auto mode only: open/close the "auto-publish is failing" tracking issue.
+  issues: write
 
 jobs:
   draft:
@@ -218,15 +220,19 @@ jobs:
           # Manual runs regenerate on purpose, even if today's digest exists.
           if [ "${{ github.event_name }}" = "schedule" ] && [ -e "$DRAFT_PATH" ]; then
             echo "::notice::Digest for $DIGEST_DATE is already published; this scheduled firing leaves it untouched."
+            echo "AUTO_RESULT=healthy" >> "$GITHUB_ENV"
             exit 0
           fi
           if [ -z "$ANTHROPIC_API_KEY" ]; then
             echo "::warning::publishMode is 'auto' but ANTHROPIC_API_KEY is not set; auto mode has nothing to publish. Add the secret or switch publishMode back to 'review'."
+            echo "AUTO_RESULT=failed" >> "$GITHUB_ENV"
+            echo "AUTO_REASON=The ANTHROPIC_API_KEY secret is not set. Auto mode has nothing to publish without it." >> "$GITHUB_ENV"
             exit 0
           fi
           AI_ENABLED="$(node scripts/generate-digest.mjs --print-enabled)"
           if [ "$AI_ENABLED" != "true" ]; then
             echo "::notice::AI drafts are paused (ai.enabled is false in site.config.json); nothing published."
+            echo "AUTO_RESULT=paused" >> "$GITHUB_ENV"
             exit 0
           fi
           set +e
@@ -235,6 +241,8 @@ jobs:
           set -e
           if [ "$CODE" != "0" ]; then
             echo "::warning::AI generation failed (exit $CODE); nothing published for $DIGEST_DATE. A delayed scheduled firing today will retry."
+            echo "AUTO_RESULT=failed" >> "$GITHUB_ENV"
+            echo "AUTO_REASON=AI generation failed (generate-digest exit code $CODE). Exit 3 covers API errors -- including no API credit -- and output that failed validation after a retry; the run log has the details." >> "$GITHUB_ENV"
             exit 0
           fi
           node scripts/build-manifest.mjs
@@ -243,8 +251,78 @@ jobs:
           git add "$DRAFT_PATH" digests.json
           if git diff --cached --quiet; then
             echo "::notice::Generated digest is identical to what is already published; nothing to do."
+            echo "AUTO_RESULT=healthy" >> "$GITHUB_ENV"
             exit 0
           fi
           git commit -m "Publish news digest for $DIGEST_DATE (auto)"
           # Tolerate a racing push to main (rare): rebase once and retry.
           git push origin HEAD:main || (git pull --rebase origin main && git push origin HEAD:main)
+          echo "AUTO_RESULT=published" >> "$GITHUB_ENV"
+      - name: Report auto-publish health
+        # Auto mode fails quietly by design: nothing publishes and the run
+        # stays green, so a site can stop updating for weeks unnoticed (one
+        # did, July-September 2026). This step makes a failure streak loud:
+        # once no digest has published for STALE_ALERT_DAYS days
+        # (scripts/lib/health.mjs), it opens one tracking issue -- or adds a
+        # comment for each new failed date -- and the next successful publish
+        # closes it. A single failed firing stays quiet, since the late twin
+        # firing retries. Runs even if the step above errored.
+        if: ${{ !cancelled() && steps.guard.outputs.should_run == 'true' && env.PUBLISH_MODE == 'auto' }}
+        run: |
+          TITLE="Daily digest: auto-publish is failing"
+          ISSUE="$(gh issue list --state open --limit 100 --json number,title --jq "[.[] | select(.title == \"$TITLE\") | .number][0] // empty")"
+          RESULT="${AUTO_RESULT:-failed}"
+          REASON="${AUTO_REASON:-The auto-publish step stopped with an error before it finished.}"
+          RUN_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          case "$RESULT" in
+            published|healthy)
+              if [ -n "$ISSUE" ]; then
+                gh issue close "$ISSUE" --comment "The digest for $DIGEST_DATE is published. Auto-publish works again ([run]($RUN_URL))."
+              fi
+              exit 0
+              ;;
+            paused)
+              exit 0
+              ;;
+          esac
+          read -r ALERT LATEST < <(node scripts/check-freshness.mjs --date "$DIGEST_DATE")
+          if [ "$ALERT" != "true" ]; then
+            echo "::notice::No digest for $DIGEST_DATE yet (latest: $LATEST). A tracking issue opens if the site goes two days without a digest."
+            exit 0
+          fi
+          if [ -n "$ISSUE" ]; then
+            RECORDED="$(gh issue view "$ISSUE" --json body,comments --jq '.body, .comments[].body')"
+            if [[ "$RECORDED" == *"Failed date: $DIGEST_DATE"* ]]; then
+              echo "Issue #$ISSUE already records the failure for $DIGEST_DATE."
+              exit 0
+            fi
+          fi
+          REPORT="$RUNNER_TEMP/health-report.md"
+          cat > "$REPORT" <<EOF
+          Failed date: $DIGEST_DATE
+          Latest published digest: $LATEST
+          Cause: $REASON
+          Run: $RUN_URL
+          EOF
+          if [ -n "$ISSUE" ]; then
+            gh issue comment "$ISSUE" --body-file "$REPORT"
+          else
+            cat >> "$REPORT" <<'EOF'
+
+          The daily workflow runs in `publishMode: "auto"` and no digest has
+          published for two days or more (or none has published yet). In auto
+          mode a failed generation publishes nothing and the run stays green, so
+          this issue is the alert.
+
+          Common causes:
+          - No API credit: look at the balance in the Anthropic Console.
+          - The `ANTHROPIC_API_KEY` secret is missing or revoked.
+          - An API error, or output that failed validation after a retry: the
+            linked run log has the details.
+
+          This issue closes automatically after the next successful publish.
+          To stop the alerts, fix the cause, set `"ai": { "enabled": false }`, or
+          set `"publishMode": "review"` in site.config.json.
+          EOF
+            gh issue create --title "$TITLE" --body-file "$REPORT"
+          fi

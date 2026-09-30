@@ -49,6 +49,7 @@ merges before anything publishes.
 - `scripts/should-run-now.mjs` - schedule guard used by the daily workflow.
 - `scripts/build-feed.mjs` - generates feed.xml and sitemap.xml at deploy time.
 - `scripts/generate-digest.mjs` - optional AI draft generation (needs API key).
+- `scripts/check-freshness.mjs` - days since the last digest; drives the auto-mode failure alert.
 - `templates/digest-template.html` - editable digest starter.
 - `.github/workflows/daily-draft.yml` - scheduled draft PR routine.
 - `.github/workflows/build.yml` - GitHub Pages deployment.
