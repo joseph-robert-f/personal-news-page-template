@@ -203,6 +203,28 @@ effort `high`, billed at output rates throughout the loop.
   provider console: the failure mode of an empty balance is a silently
   missing morning edition.
 
+## 11. A silent failure mode needs an alarm, not a log line (added 30 September 2026)
+
+**What happened:** The maintainer's instance ran in `publishMode: "auto"`.
+Its last digest published on 13 July 2026. For the next eleven weeks every
+run was green and nothing published -- most likely because the API credit
+ran out, which auto mode treats as "publish nothing, log a warning". Nobody
+reads the logs of green runs, so the site simply went stale. The stall was
+found by accident during an unrelated review.
+
+**Lessons:**
+- Lesson 8 said to make soft-skips loud with a `::warning::`. That is loud
+  only to someone who opens the run. When a human is out of the loop by
+  design (auto mode), the alert has to reach them: an issue notifies, a log
+  line does not.
+- Alert on the outcome, not the event. One failed firing is normal (the late
+  twin retries); "no digest for two days" is the actual problem. The
+  workflow now opens one tracking issue at that point, comments once per
+  further failed date, and closes it on the next successful publish.
+- Some failures stop the watcher too. GitHub disables schedules in public
+  repositories after 60 days without activity, and a disabled schedule runs
+  no alert step. The README now says where to look for that banner.
+
 ---
 
 *Add new entries above this line with a date and the run or incident that

@@ -73,6 +73,7 @@ optionally pre-fill each draft with sourced stories.
 | `scripts/should-run-now.mjs` | Schedule guard: decides which daily firing creates the draft. |
 | `scripts/check-cron.mjs` | Confirms the workflow cron lines cover your configured publish time. |
 | `scripts/generate-digest.mjs` | Optional AI draft generation (needs `ANTHROPIC_API_KEY`). |
+| `scripts/check-freshness.mjs` | Auto mode: reports days since the last digest, for the failure alert. |
 | `.github/workflows/daily-draft.yml` | Scheduled Action that opens draft PRs for review. |
 | `.github/workflows/build.yml` | Deploys the published site to GitHub Pages on pushes to `main`. |
 | `.github/workflows/pr-checks.yml` | Runs the config check, tests, manifest check, and digest linter on every PR. |
@@ -222,8 +223,19 @@ a clean pass through the content linter — commits it straight to `main`,
 which deploys it. There is no PR and no human step.
 
 Auto mode needs the `ANTHROPIC_API_KEY` secret and API credit. Without
-them there is nothing to publish, so the site silently stops updating --
-use review mode if you don't want a paid API in the loop.
+them there is nothing to publish -- use review mode if you don't want a paid
+API in the loop.
+
+**Failure alert:** a failed generation keeps the run green, so auto mode
+watches for a streak instead. When the site has gone two days without a new
+digest, the workflow opens one issue titled *Daily digest: auto-publish is
+failing* with the cause and a link to the run, adds a comment for each
+further failed day, and closes the issue after the next successful publish.
+Watch the repository (or at least its issues) to get the notification. One
+thing the alert cannot catch: GitHub disables scheduled workflows in public
+repositories after 60 days without activity. An auto-mode site that
+publishes daily never hits this, but if yours has stopped for a while,
+check the Actions tab for a "disabled" banner.
 
 What you give up is source verification: nobody confirms the cited links
 actually support the claims before they publish. The automated gates still
