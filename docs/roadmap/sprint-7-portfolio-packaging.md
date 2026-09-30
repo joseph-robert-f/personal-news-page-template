@@ -1,6 +1,6 @@
 # Sprint 7 — Portfolio Packaging (Presentation)
 
-**Status:** In progress. Content run (7.1) started 13 July 2026; README landing page (7.2) done in #18 with `docs/assets/digest-light-dark.png` (the one-day capture set it was cut from was then removed). 7.3, 7.5 not yet started.
+**Status:** In progress. Content run (7.1) descoped 30 September 2026: no standing instance is kept, so the README shows a screenshot of a real 13 July 2026 digest instead of a live demo link. README landing page (7.2) done in #18 with `docs/assets/digest-light-dark.png`. 7.3, 7.5 not yet started (#16).
 
 **Size:** Small (½ day of work + a 1–2 week content run that happens on its own)
 **Suggested model:** Claude Haiku 4.5 (`claude-haiku-4-5`) for the mechanical
