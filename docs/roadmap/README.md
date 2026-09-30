@@ -1,5 +1,7 @@
 # Roadmap: Repo Review & Sprint Plan
 
+**Status:** Sprints 1–6 shipped in [#1](https://github.com/joseph-robert-f/personal-news-page-template/pull/1) (10 July 2026); gate review run the same day ([results](gate-review-results.md)); live-shakedown fixes shipped in [#9](https://github.com/joseph-robert-f/personal-news-page-template/pull/9)–[#12](https://github.com/joseph-robert-f/personal-news-page-template/pull/12) (10–12 July 2026). Sprint 7 in progress. Each doc below carries its own status line.
+
 This directory contains the output of a full review of the repository, organized
 into six sprints. Sprints 1-3 are smaller changes (fixes, tests, polish);
 sprints 4-6 are major changes (new features and workflow capabilities).

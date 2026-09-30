@@ -1,5 +1,7 @@
 # Sprint 2 — Tests & PR Quality Gates
 
+**Status:** Shipped in [#1](https://github.com/joseph-robert-f/personal-news-page-template/pull/1) — 10 July 2026. CI gates sabotage-tested in the gate review (scratch PRs #3–#6, closed).
+
 **Size:** Small/medium (1 day)
 **Suggested model:** Claude Sonnet 5 (`claude-sonnet-5`)
 **Rationale for model:** Writing a useful test suite and a content linter

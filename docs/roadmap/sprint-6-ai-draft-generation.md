@@ -1,5 +1,7 @@
 # Sprint 6 — AI-Assisted Draft Generation (Major)
 
+**Status:** Shipped in [#1](https://github.com/joseph-robert-f/personal-news-page-template/pull/1) — 10 July 2026. Live-shakedown fixes shipped in [#9](https://github.com/joseph-robert-f/personal-news-page-template/pull/9)–[#12](https://github.com/joseph-robert-f/personal-news-page-template/pull/12) (10–12 July 2026); see [gate review finding 9](gate-review-results.md#findings-and-dispositions).
+
 **Size:** Major (2–3 days)
 **Suggested model (implementation):** Claude Opus 4.8 (`claude-opus-4-8`)
 **Suggested model (runtime, inside the workflow):** Claude Sonnet 5

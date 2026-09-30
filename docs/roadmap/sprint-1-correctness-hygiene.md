@@ -1,5 +1,7 @@
 # Sprint 1 — Correctness & Hygiene Fixes
 
+**Status:** Shipped in [#1](https://github.com/joseph-robert-f/personal-news-page-template/pull/1) — 10 July 2026.
+
 **Size:** Small (½ day)
 **Suggested model:** Claude Haiku 4.5 (`claude-haiku-4-5`)
 **Rationale for model:** Every item is a small, mechanical, well-specified edit

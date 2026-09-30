@@ -1,5 +1,7 @@
 # Sprint 4 — Feeds & Discoverability (Major)
 
+**Status:** Shipped in [#1](https://github.com/joseph-robert-f/personal-news-page-template/pull/1) — 10 July 2026. Live feed confirmed by the maintainer ([#8](https://github.com/joseph-robert-f/personal-news-page-template/pull/8)).
+
 **Size:** Major (1–2 days)
 **Suggested model:** Claude Sonnet 5 (`claude-sonnet-5`)
 **Rationale for model:** A new generator script plus a config-surface change —
