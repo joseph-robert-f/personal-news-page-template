@@ -1,6 +1,6 @@
 # Sprint 7 — Portfolio Packaging (Presentation)
 
-**Status:** In progress. Content run (7.1) started; screenshot capture script and one day's set (13 July 2026) are in `docs/assets/daily/`. 7.2–7.5 not yet started.
+**Status:** In progress. Content run (7.1) started; screenshot capture script and one day's set (13 July 2026) are in `docs/assets/daily/`. README landing page (7.2) done in #18. 7.3, 7.5 not yet started.
 
 **Size:** Small (½ day of work + a 1–2 week content run that happens on its own)
 **Suggested model:** Claude Haiku 4.5 (`claude-haiku-4-5`) for the mechanical

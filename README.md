@@ -1,11 +1,61 @@
 # Personal News Page Template
 
-A small static GitHub Pages site for publishing a personal daily news brief.
-Fork it, edit one config file, and use GitHub Actions to create reviewable daily
-draft pull requests.
+A zero-dependency GitHub Pages site that publishes a sourced daily news brief
+on any topic you choose -- drafted by Claude with web search, gated by a pull
+request you review, and deployed by GitHub Actions.
 
-The site itself has no build dependencies. It is plain HTML plus two small Node
-scripts that run on GitHub's hosted runners.
+[![Deploy](https://github.com/joseph-robert-f/personal-news-page-template/actions/workflows/build.yml/badge.svg)](https://github.com/joseph-robert-f/personal-news-page-template/actions/workflows/build.yml)
+[![PR checks](https://github.com/joseph-robert-f/personal-news-page-template/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/joseph-robert-f/personal-news-page-template/actions/workflows/pr-checks.yml)
+
+**Example instance:** [Northampton County, PA daily brief](https://joseph-robert-f.github.io/Northampton-County-News-/)
+-- a real site built from this template.
+
+![A daily digest in light and dark mode: five "at a glance" bullets, then story cards that lead with why each story matters](docs/assets/digest-light-dark.png)
+
+## How it works
+
+- **Plain static files.** The site is hand-written HTML, CSS, and a little
+  JavaScript ([`index.html`](index.html), [`archive.html`](archive.html),
+  [`assets/site.js`](assets/site.js)). No framework, no `package.json`, no
+  build dependencies -- the scripts run on the Node that ships with GitHub's
+  runners.
+- **Each digest is one self-contained HTML file.** The manifest
+  ([`scripts/build-manifest.mjs`](scripts/build-manifest.mjs)) reads each
+  digest's date from its `<title>`, so there is no database; the Atom feed
+  and sitemap ([`scripts/build-feed.mjs`](scripts/build-feed.mjs)) are built
+  from that manifest at deploy time.
+- **Drafts arrive as pull requests.** A scheduled workflow
+  ([`daily-draft.yml`](.github/workflows/daily-draft.yml)) opens a draft PR
+  every morning; merging it is what publishes. A DST-safe guard
+  ([`scripts/should-run-now.mjs`](scripts/should-run-now.mjs)) fires at the
+  right local time year-round and tolerates GitHub's late cron firings.
+- **Claude writes the draft (optional).** With an API key set,
+  [`scripts/generate-digest.mjs`](scripts/generate-digest.mjs) asks Claude to
+  research the topic with web search and return structured, sourced stories.
+  Output that fails validation or the content linter gets one retry with the
+  errors fed back; after that the draft falls back to a placeholder -- it
+  never publishes a broken page.
+- **CI enforces the content rules.** [`pr-checks.yml`](.github/workflows/pr-checks.yml)
+  validates the config, runs the tests, confirms the manifest is current, and
+  lints changed digests against the Content Bar
+  ([`scripts/check-digest.mjs`](scripts/check-digest.mjs)): five bullets max,
+  a source on every story, no external assets.
+
+## Engineering notes
+
+- Built spec-first: [`docs/roadmap/`](docs/roadmap/) holds the review, the
+  seven sprint specs, and each one's status -- a record of what was planned
+  and what shipped.
+- A [gate review](docs/roadmap/gate-review-results.md) tested the release
+  adversarially, including sabotage PRs to prove each CI gate catches what it
+  claims to. The [`test/`](test/) suite (`node --test`) covers the manifest,
+  feed, scheduling, linter, and generation contract.
+- [`docs/lessons-learned.md`](docs/lessons-learned.md) records what the first
+  live runs broke that offline testing could not, and how each fix was
+  pinned with a regression test.
+- Developed spec-first with Claude (Claude Code) under human review; the
+  sprint work merged through the same pull-request gate the site itself
+  uses.
 
 ## What You Get
 
@@ -17,9 +67,14 @@ scripts that run on GitHub's hosted runners.
 | `templates/digest-template.html` | Starter HTML used by the draft generator. |
 | `scripts/new-digest.mjs` | Creates a dated draft digest from the template. |
 | `scripts/build-manifest.mjs` | Scans dated digest files and writes `digests.json`. |
-| `scripts/build-feed.mjs` | Generates `feed.xml` (Atom) and `sitemap.xml` from `digests.json`; skipped until `siteUrl` is set. |
+| `scripts/build-feed.mjs` | Generates `feed.xml` (Atom) and `sitemap.xml` from `digests.json`; the site URL is derived from the repository name on Actions. |
+| `scripts/check-digest.mjs` | Lints a digest against the Content Bar. |
+| `scripts/should-run-now.mjs` | Schedule guard: decides which daily firing creates the draft. |
+| `scripts/check-cron.mjs` | Confirms the workflow cron lines cover your configured publish time. |
+| `scripts/generate-digest.mjs` | Optional AI draft generation (needs `ANTHROPIC_API_KEY`). |
 | `.github/workflows/daily-draft.yml` | Scheduled Action that opens draft PRs for review. |
 | `.github/workflows/build.yml` | Deploys the published site to GitHub Pages on pushes to `main`. |
+| `.github/workflows/pr-checks.yml` | Runs the config check, tests, manifest check, and digest linter on every PR. |
 
 ## Setup
 
@@ -72,7 +127,9 @@ is optional and has a sensible default):
 > and secrets.
 
 
-The scheduled workflow does not publish automatically. It creates a branch like
+By default the scheduled workflow does not publish automatically (see
+[Auto-publish](#auto-publish-optional-hands-off-mode) for the opt-in
+exception). It creates a branch like
 `daily-digest/2026-07-04`, writes a draft digest file, rebuilds `digests.json`,
 and opens a draft pull request.
 
@@ -85,8 +142,11 @@ requiring a manual cron edit whenever you change either setting,
 `.github/workflows/daily-draft.yml` fires twice a day -- once for each
 possible UTC offset of the configured local time -- and a guard step
 (`scripts/should-run-now.mjs`) checks the current wall-clock time in
-`config.timezone` against `publishTimeLocal` (±35 minutes) to decide which of
-the two firings actually creates a draft; the other one no-ops.
+`config.timezone` against `publishTimeLocal` to decide which firing creates
+the draft. The window accepts a firing up to 35 minutes early or 4 hours
+late, because GitHub often delays scheduled runs by an hour or more. When
+both firings land inside the window, the second one finds today's draft
+already on the branch and does nothing.
 `workflow_dispatch` runs always pass `--force` to bypass the time gate.
 
 If you change `timezone` or `publishTimeLocal` far enough that the two cron
@@ -200,9 +260,10 @@ Rebuild the manifest:
 node scripts/build-manifest.mjs
 ```
 
-Generate the Atom feed and sitemap (requires `siteUrl` to be set in
-`site.config.json`; otherwise it prints a notice and exits without writing
-anything):
+Generate the Atom feed and sitemap. On GitHub Actions the site URL is
+derived from the repository name; locally, set `siteUrl` in
+`site.config.json` or `GITHUB_REPOSITORY=owner/repo`, otherwise it prints a
+notice and exits without writing anything:
 
 ```bash
 node scripts/build-feed.mjs
