@@ -1,0 +1,12 @@
+# Keeps the SHA-pinned actions in .github/workflows/ current. Dependabot
+# opens one grouped PR a month when any action has a new release; it goes
+# through the same PR checks and human review as every other change.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      github-actions:
+        patterns: ['*']
